@@ -1,0 +1,6 @@
+# EX106+ CR Configuration File 115k baud
+LED: 1
+baud: 16
+torque_en: 0
+cw_angle_limit: 0
+ccw_angle_limit: 0
