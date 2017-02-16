@@ -1,7 +1,7 @@
 # file simTagStreamer.py simulates a robot in an arena
 
 from sensorPlanTCP import SensorPlanTCP
-import robotSim
+from robotSim import RobotSimInterface
 from joy import JoyApp, progress
 from joy.decl import *
 from waypointShared import WAYPOINT_HOST, APRIL_DATA_PORT
@@ -14,6 +14,25 @@ class RedRobotSim( RobotSimInterface ):
         RobotSimInterface.__init__(self, *args, **kw)
         self.dNoise = 0.1
         self.aNoise = 0.1
+        
+  def move( self, dist ):
+    """
+    Move forward some distance
+    """
+    # Compute a vector along the forward direction
+    fwd = dot([1,-1,-1,1],self.tagPos)/2
+    # Move all tag corners forward by distance, with some noise
+    self.tagPos = self.tagPos + fwd[newaxis,:] * dist * (1+randn()*self.dNoise)
+
+  def turn( self, angle ):
+    """
+    Turn by some angle
+    """
+    z = dot(self.tagPos,[1,1j])
+    c = mean(z)
+    zr = c + (z-c) * exp(1j * (angle+randn()*self.aNoise))
+    self.tagPos[:,0] = zr.real
+    self.tagPos[:,1] = zr.imag
         
     def refreshState(self):
         pass
