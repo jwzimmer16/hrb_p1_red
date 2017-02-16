@@ -10,19 +10,20 @@ from socket import (
   )
   
 class RedRobotSim( RobotSimInterface ):
-    def __init__(self, *args, **kw):
-        RobotSimInterface.__init__(self, *args, **kw)
-        self.dNoise = 0.1
-        self.aNoise = 0.1
-        
+  def __init__(self, *args, **kw):
+    RobotSimInterface.__init__(self, *args, **kw)
+    self.dNoise = 0.1
+    self.aNoise = 0.1
+    self.sensorPlan = SensorPlanTCP(self)
+    
   def move( self, dist ):
-    """
-    Move forward some distance
-    """
-    # Compute a vector along the forward direction
-    fwd = dot([1,-1,-1,1],self.tagPos)/2
-    # Move all tag corners forward by distance, with some noise
-    self.tagPos = self.tagPos + fwd[newaxis,:] * dist * (1+randn()*self.dNoise)
+  """
+  Move forward some distance
+  """
+  # Compute a vector along the forward direction
+  fwd = dot([1,-1,-1,1],self.tagPos)/2
+  # Move all tag corners forward by distance, with some noise
+  self.tagPos = self.tagPos + fwd[newaxis,:] * dist * (1+randn()*self.dNoise)
 
   def turn( self, angle ):
     """
@@ -33,9 +34,12 @@ class RedRobotSim( RobotSimInterface ):
     zr = c + (z-c) * exp(1j * (angle+randn()*self.aNoise))
     self.tagPos[:,0] = zr.real
     self.tagPos[:,1] = zr.imag
+    
+  def move_auto(self):
+      
         
     def refreshState(self):
-        pass
+      pass
     
 
 class RobotSimulatorApp( JoyApp ):
