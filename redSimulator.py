@@ -1,7 +1,7 @@
 # file simTagStreamer.py simulates a robot in an arena
 
 from sensorPlanTCP import SensorPlanTCP
-from robotSim import DummyRobotSim
+import robotSim
 from joy import JoyApp, progress
 from joy.decl import *
 from waypointShared import WAYPOINT_HOST, APRIL_DATA_PORT
@@ -9,9 +9,11 @@ from socket import (
   socket, AF_INET,SOCK_DGRAM, IPPROTO_UDP, error as SocketError,
   )
   
-class RedRobotSim( DummyRobotSim ):
-    def __init__(self):
-        DummyRobotSim.__init__(fn=None)
+class RedRobotSim( RobotSimInterface ):
+    def __init__(self, *args, **kw):
+        RobotSimInterface.__init__(self, *args, **kw)
+        self.dNoise = 0.1
+        self.aNoise = 0.1
         
     def refreshState(self):
         pass
@@ -39,7 +41,7 @@ class RobotSimulatorApp( JoyApp ):
     # Set up the sensor receiver plan
     self.sensor = SensorPlanTCP(self,server=self.srvAddr[0])
     self.sensor.start()
-    self.robSim = DummyRobotSim(fn=None)
+    self.robSim = RedRobotSim()
     self.timeForStatus = self.onceEvery(1)
     self.timeForLaser = self.onceEvery(1/15.0)
     self.timeForFrame = self.onceEvery(1/20.0)
