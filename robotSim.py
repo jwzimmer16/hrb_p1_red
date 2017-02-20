@@ -179,3 +179,94 @@ class DummyRobotSim( RobotSimInterface ):
     da = dot([1,-1],self.laserAxis)
     self.laserAxis[1] += randn(2) * sqrt(sum(da*da)) * 0.01
     
+    
+    
+class RedRobotSim( RobotSimInterface ):
+  def __init__(self, sp, *args, **kw):
+    RobotSimInterface.__init__(self, *args, **kw)
+    self.dNoise = 0.1
+    self.aNoise = 0.1
+    #self.serverAddr = serverAddr
+    #self.sensorPlan = SensorPlanTCP(self, server=self.serverAddr[0])
+    self.sensorPlan = sp
+    self.isAuto = False
+    # Initialize state dictionary
+    self.stateInfo = {}
+    
+    
+  def move( self, dist ):
+    """
+      Move forward some distance
+    """
+    # Compute a vector along the forward direction
+    fwd = dot([1,-1,-1,1],self.tagPos)/2
+    # Move all tag corners forward by distance, with some noise
+    self.tagPos = self.tagPos + fwd[newaxis,:] * dist * (1+randn()*self.dNoise)
+
+  def turn( self, angle ):
+    """
+      Turn by some angle
+    """
+    z = dot(self.tagPos,[1,1j])
+    c = mean(z)
+    zr = c + (z-c) * exp(1j * (angle+randn()*self.aNoise))
+    self.tagPos[:,0] = zr.real
+    self.tagPos[:,1] = zr.imag
+    
+  def startAuto(self):
+    self.isAuto = True
+    # Init state information to begin moving
+    ts, f, b = self.sensorPlan.lastSensor    
+    self.stateInfo["ts"] = ts
+    self.stateInfo["f"] = f
+    self.stateInfo["b"] = b
+
+  def stopAuto(self):
+    self.isAuto = False
+    
+      
+  def moveAuto(self):
+    ts,f,b = self.sensorPlan.lastSensor
+    
+    # Move bot towards/along line if timestamp increased
+    if (ts > self.stateInfo["ts"]):
+      delt_f = f - self.stateInfo["f"] 
+      delt_b = b - self.stateInfo["b"]
+        
+      if (f==0 and delt_f==0) or (b==0  and delt_b==0):
+      # Sensors not orthogonal and no delta info available
+      # Should be for initial movement from 1st waypoint
+        self.move(0.1)
+            
+      elif f > 0 and b > 0:
+            
+        dist_dif = f-b
+            
+        if abs(dist_dif) < 40:
+          self.move(0.1)
+        elif dist_dif >= 40:
+          self.turn(-0.1)
+          self.move(0.1)
+        elif dist_dif <= 40:
+          self.turn(0.1)
+          self.move(0.1)
+                
+
+    
+    self.updateStateInfo(ts,f,b)
+    #self.move(0.25)
+    
+  def updateStateInfo(self, time_stamp,forw,back):
+      self.stateInfo["ts"] = time_stamp
+      self.stateInfo["f"] = forw
+      self.stateInfo["b"] = back
+
+        
+  def refreshState(self):
+    if self.isAuto:        
+        self.moveAuto()
+        
+    self.laserAxis = dot([[1,1,0,0],[0,0,1,1]],self.tagPos)/2
+    da = dot([1,-1],self.laserAxis)
+    self.laserAxis[1] += randn(2) * sqrt(sum(da*da)) * 0.01
+    

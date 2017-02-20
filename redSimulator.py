@@ -1,45 +1,14 @@
 # file simTagStreamer.py simulates a robot in an arena
 
 from sensorPlanTCP import SensorPlanTCP
-from robotSim import RobotSimInterface
+from robotSim import RedRobotSim
 from joy import JoyApp, progress
 from joy.decl import *
 from waypointShared import WAYPOINT_HOST, APRIL_DATA_PORT
 from socket import (
   socket, AF_INET,SOCK_DGRAM, IPPROTO_UDP, error as SocketError,
   )
-  
-class RedRobotSim( RobotSimInterface ):
-  def __init__(self, *args, **kw):
-    RobotSimInterface.__init__(self, *args, **kw)
-    self.dNoise = 0.1
-    self.aNoise = 0.1
-    self.sensorPlan = SensorPlanTCP(self)
-    
-  def move( self, dist ):
-  """
-  Move forward some distance
-  """
-  # Compute a vector along the forward direction
-  fwd = dot([1,-1,-1,1],self.tagPos)/2
-  # Move all tag corners forward by distance, with some noise
-  self.tagPos = self.tagPos + fwd[newaxis,:] * dist * (1+randn()*self.dNoise)
-
-  def turn( self, angle ):
-    """
-    Turn by some angle
-    """
-    z = dot(self.tagPos,[1,1j])
-    c = mean(z)
-    zr = c + (z-c) * exp(1j * (angle+randn()*self.aNoise))
-    self.tagPos[:,0] = zr.real
-    self.tagPos[:,1] = zr.imag
-    
-  def move_auto(self):
-      
-        
-    def refreshState(self):
-      pass
+   
     
 
 class RobotSimulatorApp( JoyApp ):
@@ -64,7 +33,7 @@ class RobotSimulatorApp( JoyApp ):
     # Set up the sensor receiver plan
     self.sensor = SensorPlanTCP(self,server=self.srvAddr[0])
     self.sensor.start()
-    self.robSim = RedRobotSim()
+    self.robSim = RedRobotSim(self.sensor, fn=None)
     self.timeForStatus = self.onceEvery(1)
     self.timeForLaser = self.onceEvery(1/15.0)
     self.timeForFrame = self.onceEvery(1/20.0)
@@ -116,6 +85,12 @@ class RobotSimulatorApp( JoyApp ):
       elif evt.key == K_RIGHT:
         self.robSim.turn(-0.5)
         return progress("(say) Turn right")
+      elif evt.key == K_a:
+        self.robSim.startAuto()
+        return progress("(say) Moving autonomously")
+      elif evt.key == K_s:
+        self.robSim.stopAuto()
+        return progress("(say) Stop autonomous control")
     # Use superclass to show any other events
       else:
         return JoyApp.onEvent(self,evt)
