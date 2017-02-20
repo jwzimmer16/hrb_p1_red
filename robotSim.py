@@ -192,6 +192,11 @@ class RedRobotSim( RobotSimInterface ):
     self.isAuto = False
     # Initialize state dictionary
     self.stateInfo = {}
+    # Threshold params
+    self.SENSE_THRESH = 5
+    self.DIFF_THRESH = 40
+    self.MOVE_DIST = 0.1
+    self.TURN_DIST = 0.1
     
     
   def move( self, dist ):
@@ -227,34 +232,44 @@ class RedRobotSim( RobotSimInterface ):
       
   def moveAuto(self):
     ts,f,b = self.sensorPlan.lastSensor
+    ts_w,w = self.sensorPlan.lastWaypoints
     
     # Move bot towards/along line if timestamp increased
     if (ts > self.stateInfo["ts"]):
       delt_f = f - self.stateInfo["f"] 
       delt_b = b - self.stateInfo["b"]
         
-      if (f==0 and delt_f==0) or (b==0  and delt_b==0):
-      # Sensors not orthogonal and no delta info available
-      # Should be for initial movement from 1st waypoint
-        self.move(0.1)
+      if (f<5 or b<5):
+          if (len(w) == 4):
+          # Sensors not orthogonal and no delta info available
+          # Should be for initial movement from 1st waypoint
+            self.move(self.MOVE_DIST)
+        
+          elif (f < self.SENSE_THRESH and b >= self.SENSE_THRESH):
+            self.turn(self.TURN_DIST)
+            self.move(self.MOVE_DIST)
             
-      elif f > 0 and b > 0:
+          elif (b < self.SENSE_THRESH and f >= self.SENSE_THRESH):
+            self.turn(-self.TURN_DIST)
+            self.move(self.MOVE_DIST)
+          else:
+            self.turn(self.TURN_DIST * 5)
+            self.move(self.MOVE_DIST * 2)
+            
+      elif (f > self.SENSE_THRESH and b > self.SENSE_THRESH):
             
         dist_dif = f-b
             
-        if abs(dist_dif) < 40:
-          self.move(0.1)
-        elif dist_dif >= 40:
-          self.turn(-0.1)
-          self.move(0.1)
-        elif dist_dif <= 40:
-          self.turn(0.1)
-          self.move(0.1)
+        if (abs(dist_dif) < self.DIFF_THRESH) :
+          self.move(self.MOVE_DIST)
+        elif (dist_dif >= self.DIFF_THRESH):
+          self.turn(-self.TURN_DIST)
+          self.move(self.MOVE_DIST)
+        elif (dist_dif <= self.DIFF_THRESH):
+          self.turn(self.TURN_DIST)
+          self.move(self.MOVE_DIST)
                 
-
-    
     self.updateStateInfo(ts,f,b)
-    #self.move(0.25)
     
   def updateStateInfo(self, time_stamp,forw,back):
       self.stateInfo["ts"] = time_stamp
