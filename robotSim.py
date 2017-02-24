@@ -239,7 +239,7 @@ class RedRobotSim( RobotSimInterface ):
       delt_f = f - self.stateInfo["f"] 
       delt_b = b - self.stateInfo["b"]
         
-      if (f<5 or b<5):
+      if (f<self.SENSE_THRESH or b<self.SENSE_THRESH):
           if (len(w) == 4):
           # Sensors not orthogonal and no delta info available
           # Should be for initial movement from 1st waypoint
