@@ -135,7 +135,7 @@ class RobotSimulatorApp( JoyApp ):
         self.moveP.start()
         return progress("(say) Move forward")
       elif evt.key == K_DOWN and not self.moveP.isRunning():
-        self.moveP.dist = 0.2
+        self.moveP.dist = -0.2
         self.moveP.start()
         return progress("(say) Move back")
       if evt.key == K_LEFT and not self.turnP.isRunning():
@@ -147,10 +147,10 @@ class RobotSimulatorApp( JoyApp ):
         self.turnP.start()
         return progress("(say) Turn right")
       elif evt.key == K_a:
-        yield self.autoP.start()
+        self.autoP.start()
         return progress("(say) Moving autonomously")
       elif evt.key == K_s:
-        yield self.autoP.stop()
+        self.autoP.stop()
         return progress("(say) Stop autonomous control")
         
     # Use superclass to show any other events
