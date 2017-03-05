@@ -51,7 +51,7 @@ class RedBuggyApp( JoyApp ):
         # Load plans here
         self.moveP = MoveStraight(self)
         self.turnP = Rotate(self)
-        self.autoPlan = AutoPlan(self, self.sensor, self.movePlan, self.turnPlan)
+        self.autoPlan = AutoPlan(self, self.sensor, self.moveP, self.turnP)
     
     def onEvent(self, evt):
         if evt.type != KEYDOWN:
