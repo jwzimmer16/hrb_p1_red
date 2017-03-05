@@ -23,7 +23,7 @@ class MovePlan( Plan ):
     
     def __init__(self,app):
         Plan.__init__(self,app,**kw)
-	self.joyapp = app 
+        self.joyapp = app 
     def behavior(self):
         self.joyapp.lwheel.desRPM = 2
         self.joyapp.rwheel.desRPM = 2
@@ -52,14 +52,14 @@ class RedBuggyApp( JoyApp ):
         # Init sensor plan
         self.sensor = SensorPlanTCP(self,server=self.srvAddr[0])
         self.sensor.start()
-	# init servo objects
-	self.lwheel = ServoWrapperMX(self,0x02)
-	self.rwheel = ServoWrapperMX(self,0x55)
+        # init servo objects
+        self.lwheel = ServoWrapperMX(self,0x02)
+        self.rwheel = ServoWrapperMX(self,0x55)
         self.turret = ServoWrapperMX(self,0x4c)
-	self.lwheel.start()
-	self.rwheel.start()
-	self.turret.start()
-	# Load plans here
+        self.lwheel.start()
+        self.rwheel.start()
+        self.turret.start()
+        # Load plans here
         self.moveP = MovePlan(self)
         self.turnP = Rotate(self)
         self.autoPlan = AutoPlan(self, self.sensor, self.moveP, self.turnP)
@@ -92,16 +92,16 @@ class RedBuggyApp( JoyApp ):
      
 #runs on main        
 if __name__=="__main__":
-  print """
-  Running the robot simulator
+    print """
+    Running the robot simulator
 
-  Listens on local port 0xBAA (2986) for incoming waypointServer
-  information, and also transmits simulated tagStreamer messages to
-  the waypointServer. 
-  """
-  import sys
-  if len(sys.argv)>1:
-      app=RedBuggyApp(wphAddr=sys.argv[1], robot = dict)
-  else:
-      app=RedBuggyApp(wphAddr=WAYPOINT_HOST)
-  app.run()
+    Listens on local port 0xBAA (2986) for incoming waypointServer
+    information, and also transmits simulated tagStreamer messages to
+    the waypointServer. 
+    """
+    import sys
+    if len(sys.argv)>1:
+        app=RedBuggyApp(wphAddr=sys.argv[1], robot = dict(3))
+    else:
+        app=RedBuggyApp(wphAddr=WAYPOINT_HOST, robot = dict(3))
+    app.run()
