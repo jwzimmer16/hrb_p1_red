@@ -16,15 +16,19 @@ from waypointShared import WAYPOINT_HOST, APRIL_DATA_PORT
 from socket import (
   socket, AF_INET,SOCK_DGRAM, IPPROTO_UDP, error as SocketError,
   )
-
+from syncmx import *
+from sensorPlanTCP import SensorPlanTCP
 
 class MovePlan( Plan ):
     
     def __init__(self,app):
-        Plan.__init__(self,app)    
-        
+        Plan.__init__(self,app,**kw)
+	self.joyapp = app 
     def behavior(self):
-        pass
+        self.joyapp.lwheel.desRPM = 2
+        self.joyapp.rwheel.desRPM = 2
+        self.joyapp.turret.desRPM = 0
+	
     
 class RotatePlan( Plan ):
     
@@ -43,13 +47,20 @@ class RedBuggyApp( JoyApp ):
           confPath="$/cfg/JoyApp.yml", *arg, **kw
           ) 
         self.srvAddr = (wphAddr, APRIL_DATA_PORT)
-
+        
     def onStart(self):
         # Init sensor plan
         self.sensor = SensorPlanTCP(self,server=self.srvAddr[0])
         self.sensor.start()
-        # Load plans here
-        self.moveP = MoveStraight(self)
+	# init servo objects
+	self.lwheel = ServoWrapperMX(self,0x02)
+	self.rwheel = ServoWrapperMX(self,0x55)
+        self.turret = ServoWrapperMX(self,0x4c)
+	self.lwheel.start()
+	self.rwheel.start()
+	self.turret.start()
+	# Load plans here
+        self.moveP = MovePlan(self)
         self.turnP = Rotate(self)
         self.autoPlan = AutoPlan(self, self.sensor, self.moveP, self.turnP)
     
@@ -60,6 +71,7 @@ class RedBuggyApp( JoyApp ):
         if evt.type == KEYDOWN:
             if evt.key == K_UP and not self.moveP.isRunning():
                 # Forward plan
+                self.moveP.start()
                 return progress("(say) Move forward")
             elif evt.key == K_DOWN and not self.moveP.isRunning(): 
                 # Backward plan
@@ -76,15 +88,20 @@ class RedBuggyApp( JoyApp ):
             elif evt.key == K_s and not(self.turnP.isRunning() or self.moveP.isRunning()):
                 self.autoPlan.stop()
                 return progress("(say) Stop autonomous control")
-                
+        
+     
 #runs on main        
 if __name__=="__main__":
-    robot = None
-    scr = None
-    
-    if (config.toServos=='true'):
-        robot = dict(count=config.numServos)
-    
-    app = CaterpillarApp(robot = robot,scr=scr)
+  print """
+  Running the robot simulator
 
-    app.run()
+  Listens on local port 0xBAA (2986) for incoming waypointServer
+  information, and also transmits simulated tagStreamer messages to
+  the waypointServer. 
+  """
+  import sys
+  if len(sys.argv)>1:
+      app=RedBuggyApp(wphAddr=sys.argv[1], robot = dict)
+  else:
+      app=RedBuggyApp(wphAddr=WAYPOINT_HOST)
+  app.run()
