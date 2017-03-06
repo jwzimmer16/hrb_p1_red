@@ -31,9 +31,12 @@ class MovePlan( Plan ):
     	self.r = self.app.robot.at
 
     def behavior(self):
-        self.r.lwheel.set_torque(1);
-	self.r.rwheel.set_torque(1);
-	
+	self.r.lwheel.set_torque(0.02)
+	self.r.rwheel.set_torque(-0.02)
+
+    def stopping(self):
+	self.r.lwheel.set_torque(0)
+	self.r.rwheel.set_torque(0)
     
 class RotatePlan( Plan ):
     
@@ -42,8 +45,8 @@ class RotatePlan( Plan ):
         self.r = self.app.robot.at
 
     def behavior(self):
-        self.r.lwheel.set_torque(1);
-	self.r.rwheel.set_torque(1);
+        self.r.lwheel.set_torque(1)
+	self.r.rwheel.set_torque(1)
     
 
 
@@ -76,6 +79,9 @@ class RedBuggyApp( JoyApp ):
             elif evt.key == K_DOWN and not self.moveP.isRunning(): 
                 # Backward plan
                 return progress("(say) Move back")
+	    elif evt.key == K_w and not self.moveP.isRunning():
+		self.moveP.stopping()
+		return progress("(say) Stopping")
             elif evt.key == K_LEFT and not self.turnP.isRunning():
                 # Turn left plan
                 return progress("(say) Turn left")
