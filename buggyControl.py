@@ -21,6 +21,7 @@ from syncmx import *
 from sensorPlanTCP import SensorPlanTCP
 from autoPlan import AutoPlan
 from joy import *
+import time
 SERVO_NAMES = {
 0.02:'MX1', 0x55: 'MX2', 0x4C: 'MX3'
 }
@@ -29,10 +30,18 @@ class MovePlan( Plan ):
     def __init__(self,app):
 	Plan.__init__(self,app) 
     	self.r = self.app.robot.at
-
+	self.torque = 0.02
+	self.duration = 1 
+	
     def behavior(self):
-	self.r.lwheel.set_torque(0.02)
-	self.r.rwheel.set_torque(-0.02)
+	timeout = time.time() + 10
+        self.r.lwheel.set_torque(self.torque)
+        self.r.rwheel.set_torque(-1 * self.torque)
+	while True:
+	    if time.time() > timeout:
+                self.r.lwheel.set_torque(0)
+                self.r.rwheel.set_torque(0)
+                break
 
     def stopping(self):
 	self.r.lwheel.set_torque(0)
@@ -45,9 +54,12 @@ class RotatePlan( Plan ):
         self.r = self.app.robot.at
 
     def behavior(self):
-        self.r.lwheel.set_torque(1)
-	self.r.rwheel.set_torque(1)
+        self.r.lwheel.set_torque(0.02)
+	self.r.rwheel.set_torque(0.02)
     
+    def stopping(self):
+	self.r.lwheel.set_torque(0)
+	self.r.rwheel.set_torque(0)
 
 
 class RedBuggyApp( JoyApp ):
@@ -79,8 +91,9 @@ class RedBuggyApp( JoyApp ):
             elif evt.key == K_DOWN and not self.moveP.isRunning(): 
                 # Backward plan
                 return progress("(say) Move back")
-	    elif evt.key == K_w and not self.moveP.isRunning():
+	    elif evt.key == K_w and not self.moveP.isRunning() or self.moveP.isRunning():
 		self.moveP.stopping()
+		self.turnP.stopping()
 		return progress("(say) Stopping")
             elif evt.key == K_LEFT and not self.turnP.isRunning():
                 # Turn left plan
