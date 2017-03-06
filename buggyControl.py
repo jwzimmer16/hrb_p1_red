@@ -1,3 +1,4 @@
+
 # -*- coding: utf-8 -*-
 """
 File: buggyControl.py
@@ -18,25 +19,31 @@ from socket import (
   )
 from syncmx import *
 from sensorPlanTCP import SensorPlanTCP
-
+from autoPlan import AutoPlan
+from joy import *
+SERVO_NAMES = {
+0.02:'MX1', 0x55: 'MX2', 0x4C: 'MX3'
+}
 class MovePlan( Plan ):
     
     def __init__(self,app):
-        Plan.__init__(self,app,**kw)
-        self.joyapp = app 
+	Plan.__init__(self,app) 
+    	self.r = self.app.robot.at
+
     def behavior(self):
-        self.joyapp.lwheel.desRPM = 2
-        self.joyapp.rwheel.desRPM = 2
-        self.joyapp.turret.desRPM = 0
+        self.r.lwheel.set_torque(1);
+	self.r.rwheel.set_torque(1);
 	
     
 class RotatePlan( Plan ):
     
     def __init__(self,app):
         Plan.__init__(self,app)   
-        
+        self.r = self.app.robot.at
+
     def behavior(self):
-        pass
+        self.r.lwheel.set_torque(1);
+	self.r.rwheel.set_torque(1);
     
 
 
@@ -50,19 +57,12 @@ class RedBuggyApp( JoyApp ):
         
     def onStart(self):
         # Init sensor plan
-        self.sensor = SensorPlanTCP(self,server=self.srvAddr[0])
-        self.sensor.start()
-        # init servo objects
-        self.lwheel = ServoWrapperMX(self,0x02)
-        self.rwheel = ServoWrapperMX(self,0x55)
-        self.turret = ServoWrapperMX(self,0x4c)
-        self.lwheel.start()
-        self.rwheel.start()
-        self.turret.start()
+        #self.sensor = SensorPlanTCP(self,server=self.srvAddr[0])
+        #self.sensor.start()
         # Load plans here
         self.moveP = MovePlan(self)
-        self.turnP = Rotate(self)
-        self.autoPlan = AutoPlan(self, self.sensor, self.moveP, self.turnP)
+        self.turnP = RotatePlan(self)
+        #self.autoPlan = AutoPlan(self, self.sensor, self.moveP, self.turnP)
     
     def onEvent(self, evt):
         if evt.type != KEYDOWN:
@@ -83,10 +83,10 @@ class RedBuggyApp( JoyApp ):
                 # Turn right plan
                 return progress("(say) Turn right")
             elif evt.key == K_a and not(self.turnP.isRunning() or self.moveP.isRunning()):
-                self.autoPlan.start()
+                #self.autoPlan.start()
                 return progress("(say) Moving autonomously")
             elif evt.key == K_s and not(self.turnP.isRunning() or self.moveP.isRunning()):
-                self.autoPlan.stop()
+                #self.autoPlan.stop()
                 return progress("(say) Stop autonomous control")
         
      
@@ -101,7 +101,7 @@ if __name__=="__main__":
     """
     import sys
     if len(sys.argv)>1:
-        app=RedBuggyApp(wphAddr=sys.argv[1], robot = dict(3))
+        app=RedBuggyApp(wphAddr=sys.argv[1], robot = dict(count = 3))
     else:
-        app=RedBuggyApp(wphAddr=WAYPOINT_HOST, robot = dict(3))
+        app=RedBuggyApp(wphAddr=WAYPOINT_HOST, robot = dict(count = 3))
     app.run()
