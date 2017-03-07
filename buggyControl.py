@@ -154,13 +154,13 @@ class RedBuggyApp( JoyApp ):
 
     def onStart(self):
         # Init sensor plan
-        #self.sensor = SensorPlanTCP(self,server=self.srvAddr[0])
-        #self.sensor.start()
+        self.sensor = SensorPlanTCP(self,server=self.srvAddr[0])
+        self.sensor.start()
         # Load plans here
         self.moveP = MovePlan(self)
         self.turnP = RotatePlan(self)
         self.turretP = TurretPlan(self)
-        #self.autoPlan = AutoPlan(self, self.sensor, self.moveP, self.turnP)
+        self.autoPlan = AutoPlan(self, self.sensor, self.moveP, self.turnP)
 
     def onEvent(self, evt):
         if evt.type != KEYDOWN:
@@ -192,10 +192,10 @@ class RedBuggyApp( JoyApp ):
                 self.turnP.start()
                 return progress("(say) Turn right")
             elif evt.key == K_a and not(self.turnP.isRunning() or self.moveP.isRunning()):
-                #self.autoPlan.start()
+                self.autoPlan.start()
                 return progress("(say) Moving autonomously")
             elif evt.key == K_s and not(self.turnP.isRunning() or self.moveP.isRunning()):
-                #self.autoPlan.stop()
+                self.autoPlan.stop()
                 return progress("(say) Stop autonomous control")
             elif evt.key == K_m and not (self.turnP.isRunning() or  self.moveP.isRunning()):
                 self.turretP.turretSpeed = TURRET_TORQUE 
