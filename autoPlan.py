@@ -21,6 +21,15 @@ from joy import Plan
 #from sensorPlanTCP import SensorPlanTCP
 
 
+# initialize constants 
+MOVE_TORQUE = 0.2
+MOVE_DUR = 1
+
+TURN_TORQUE = 0.2
+TURN_DUR = 1
+
+ROBOT_WIDTH = 0.3 #in cm
+TURRET_TORQUE = 0.1
 
 
 class AutoPlan( Plan ):
@@ -56,11 +65,6 @@ class AutoPlan( Plan ):
         self.stateInfo["estPos"] = (0,0)
         self.stateInfo["numWaypoints"] = 0
         
-        # initialize constants        
-        self.MOVE_DIST = 0.1
-        self.TURN_DIST = 0.3
-        self.SENSE_THRESH = 5
-        self.DIFF_THRESH = 40
         
     def updateState( self, timestamp, forw, back, waypoints):
         self.stateInfo["ts"] = timestamp
@@ -82,32 +86,28 @@ class AutoPlan( Plan ):
                     if (len(w) == 4):
                     # Sensors not orthogonal and no delta info available
                     # Should be for initial movement from 1st waypoint
-                        #self.move(self.MOVE_DIST)
-                        self.moveP.dist = self.MOVE_DIST
+
+                        self.moveP.torque = MOVE_TORQUE
                         yield self.moveP.start()
                         
-                
                     elif (f < self.SENSE_THRESH and b >= self.SENSE_THRESH):
-                        #self.turn(self.TURN_DIST)
-                        #self.move(self.MOVE_DIST)
-                        self.turnP.ang = self.TURN_DIST
-                        self.moveP.dist = self.MOVE_DIST
+
+                        self.turnP.torque = TURN_TORQUE
+                        self.moveP.torque = MOVE_TORQUE
                         yield self.turnP.start()
                         yield self.moveP.start()
                     
                     elif (b < self.SENSE_THRESH and f >= self.SENSE_THRESH):
-                        #self.turn(-self.TURN_DIST)
-                        #self.move(self.MOVE_DIST)
-                        self.turnP.ang = -self.TURN_DIST
-                        self.moveP.dist = self.MOVE_DIST
+
+                        self.turnP.torque = -TURN_TORQUE
+                        self.moveP.torque = MOVE_TORQUE
                         yield self.turnP.start()
                         yield self.moveP.start()
                         
                     else:
-                        #self.turn(self.TURN_DIST * 5)
-                        #self.move(self.MOVE_DIST * 2)
-                        self.turnP.ang = 2*self.TURN_DIST
-                        self.moveP.dist = 2*self.MOVE_DIST
+
+                        self.turnP.torque = 2*TURN_TORQUE
+                        self.moveP.torque = 2*MOVE_TORQUE
                         yield self.turnP.start()
                         yield self.moveP.start()
                     
@@ -115,23 +115,22 @@ class AutoPlan( Plan ):
                     
                     dist_dif = f-b
                     
-                    if (abs(dist_dif) < self.DIFF_THRESH) :
-                        #self.move(self.MOVE_DIST)
-                        self.moveP.dist = self.MOVE_DIST
+                    if (abs(dist_dif) < self.DIFF_THRESH):
+   
+                        self.moveP.torque = MOVE_TORQUE
                         yield self.moveP.start()
+
                     elif (dist_dif >= self.DIFF_THRESH):
-                        #self.turn(-self.TURN_DIST)
-                        #self.move(self.MOVE_DIST)
-                        self.turnP.ang = -self.TURN_DIST
-                        self.moveP.dist = self.MOVE_DIST
+
+                        self.turnP.torque = TURN_TORQUE
+                        self.moveP.torque = MOVE_TORQUE
                         yield self.turnP.start()
                         yield self.moveP.start()
                         
                     elif (dist_dif <= self.DIFF_THRESH):
-                        #self.turn(self.TURN_DIST)
-                        #self.move(self.MOVE_DIST)
-                        self.turnP.ang = -self.TURN_DIST
-                        self.moveP.dist = self.MOVE_DIST
+
+                        self.turnP.torque = -TURN_TORQUE
+                        self.moveP.torque = MOVE_TORQUE
                         yield self.turnP.start()
                         yield self.moveP.start()
                         
