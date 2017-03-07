@@ -35,6 +35,41 @@ TURN_DUR = 1
 ROBOT_WIDTH = 0.3 #in cm
 TURRET_TORQUE = 0.1
 
+class dummyAutoPlan( Plan ):
+    """
+    Plan that moves buggy forward or backward by setting equal torque on wheels
+    for a fixed duration of time.
+
+    Torque and Duration are public variables that can be modified on the fly.
+    To move buggy backwards set torque to a negative value.
+    """
+
+    def __init__(self,app):
+	Plan.__init__(self,app)
+        self.r = self.app.robot.at
+        self.torque = MOVE_TORQUE
+        self.dur = MOVE_DUR
+
+
+    def behavior(self):
+        # Set timeout stamp
+        timeout = time.time() + 6
+
+        # Set torque to move wheels. Right wheel must be opposite of left wheel
+        # due to orientation of motors
+        self.r.lwheel.set_torque(self.torque)
+        self.r.rwheel.set_torque(-1*self.torque)
+
+        # Set torque to 0 after time duration to stop moving
+        while True:
+            if time.time() > timeout:
+                self.r.lwheel.set_torque(0)
+                self.r.rwheel.set_torque(0)
+                self.r.turret.set_torque(0)
+                break
+    	yield
+
+
 class MovePlan( Plan ):
     """
     Plan that moves buggy forward or backward by setting equal torque on wheels
@@ -67,6 +102,7 @@ class MovePlan( Plan ):
                 self.r.rwheel.set_torque(0)
                 self.r.turret.set_torque(0)
                 break
+    	yield
 
     def stopping(self):
         # Set torque on both wheels to zero, used as a backup if buggy needs
@@ -108,8 +144,9 @@ class RotatePlan( Plan ):
                 self.r.rwheel.set_torque(0)
                 self.r.turret.set_torque(0)
                 break
+    	yield
 
-    def stopping(self):
+    def stopping(self): 
         # Set torque on both wheels to zero, used as a backup if buggy needs
         # to be stopped
         self.r.lwheel.set_torque(0)
@@ -142,7 +179,7 @@ class TurretPlan( Plan ):
             if time.time() > timeout:
                 self.r.turret.set_torque(0)
                 break
-
+     	yield
 
 class RedBuggyApp( JoyApp ):
 
@@ -160,7 +197,7 @@ class RedBuggyApp( JoyApp ):
         self.moveP = MovePlan(self)
         self.turnP = RotatePlan(self)
         self.turretP = TurretPlan(self)
-        self.autoPlan = AutoPlan(self, self.sensor, self.moveP, self.turnP)
+        self.dummyAutoP = dummyAutoPlan(self)
 
     def onEvent(self, evt):
         if evt.type != KEYDOWN:
@@ -192,10 +229,10 @@ class RedBuggyApp( JoyApp ):
                 self.turnP.start()
                 return progress("(say) Turn right")
             elif evt.key == K_a and not(self.turnP.isRunning() or self.moveP.isRunning()):
-                self.autoPlan.start()
+                self.dummyAutoP.start()
                 return progress("(say) Moving autonomously")
             elif evt.key == K_s and not(self.turnP.isRunning() or self.moveP.isRunning()):
-                self.autoPlan.stop()
+                self.dummyAutoP.stop()
                 return progress("(say) Stop autonomous control")
             elif evt.key == K_m and not (self.turnP.isRunning() or  self.moveP.isRunning()):
                 self.turretP.turretSpeed = TURRET_TORQUE 
