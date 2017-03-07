@@ -35,16 +35,16 @@ TURN_DUR = 5
 
 
 class MovePlan( Plan ):
-"""
+    """
     Plan that moves buggy forward or backward by setting equal torque on wheels
     for a fixed duration of time.
 
     Torque and Duration are public variables that can be modified on the fly.
     To move buggy backwards set torque to a negative value.
-"""
+    """
 
     def __init__(self,app):
-	   Plan.__init__(self,app)
+	Plan.__init__(self,app)
         self.r = self.app.robot.at
         self.torque = MOVE_TORQUE
         self.dur = MOVE_DUR
@@ -73,13 +73,13 @@ class MovePlan( Plan ):
         self.r.rwheel.set_torque(0)
 
 class RotatePlan( Plan ):
-"""
+    """
     Plant that rotates buggy by setting torque on wheels for fixed duration.
 
     Torque and direction are public so they can be modified to change direction
     and speed of rotation. To rotate buggy in opposite direction make torque a
     negative number.
-"""
+    """
 
     def __init__(self,app):
         Plan.__init__(self,app)
