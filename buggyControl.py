@@ -1,4 +1,5 @@
 
+
 # -*- coding: utf-8 -*-
 """
 File: buggyControl.py
@@ -95,6 +96,7 @@ class RotatePlan( Plan ):
         # directions with same torque
         self.r.lwheel.set_torque(self.torque)
         self.r.rwheel.set_torque(self.torque)
+        self.r.turret.set_torque(-self.torque)        
 
         # Set torque to 0 after time duration to stop moving
         while True:
