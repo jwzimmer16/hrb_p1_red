@@ -28,10 +28,11 @@ SERVO_NAMES = {
     0x02:'MX1', 0x55:'MX2', 0x4C:'MX3'
 }
 MOVE_TORQUE = 0.2
-MOVE_DUR = 1
+MOVE_DUR = 0.25
+WAIT_DUR = 1
 
 TURN_TORQUE = 0.2
-TURN_DUR = 1
+TURN_DUR = 0.25
 ROBOT_WIDTH = 0.3 #in cm
 TURRET_TORQUE = 0.1
 
@@ -49,6 +50,7 @@ class dummyAutoPlan( Plan ):
         self.r = self.app.robot.at
         self.torque = MOVE_TORQUE
         self.dur = MOVE_DUR
+	self.wait = WAIT_DUR
 
 
     def behavior(self):
@@ -84,32 +86,21 @@ class MovePlan( Plan ):
         self.r = self.app.robot.at
         self.torque = MOVE_TORQUE
         self.dur = MOVE_DUR
+        self.wait = WAIT_DUR
 
 
     def behavior(self):
-        # Set timeout stamp
-        timeout = time.time() + self.dur
-
         # Set torque to move wheels. Right wheel must be opposite of left wheel
         # due to orientation of motors
-        self.r.lwheel.set_torque(self.torque)
-        self.r.rwheel.set_torque(-1*self.torque)
+        self.r.lwheel.set_torque(-1*self.torque)
+        self.r.rwheel.set_torque(self.torque)
 
-        # Set torque to 0 after time duration to stop moving
-        while True:
-            if time.time() > timeout:
-                self.r.lwheel.set_torque(0)
-                self.r.rwheel.set_torque(0)
-                self.r.turret.set_torque(0)
-                break
-    	yield
+        yield self.forDuration(self.wait)
 
-    def stopping(self):
-        # Set torque on both wheels to zero, used as a backup if buggy needs
-        # to be stopped
-        self.r.lwheel.set_torque(0)
+	self.r.lwheel.set_torque(0)
         self.r.rwheel.set_torque(0)
         self.r.turret.set_torque(0)
+
 
 class RotatePlan( Plan ):
     """
@@ -125,6 +116,7 @@ class RotatePlan( Plan ):
         self.r = self.app.robot.at
         self.torque = TURN_TORQUE
         self.dur = TURN_DUR
+        self.wait = WAIT_DUR
 
 
     def behavior(self):
@@ -137,19 +129,9 @@ class RotatePlan( Plan ):
         self.r.rwheel.set_torque(self.torque)
         self.r.turret.set_torque(self.torque*0.4)        
 
-        # Set torque to 0 after time duration to stop moving
-        while True:
-            if time.time() > timeout:
-                self.r.lwheel.set_torque(0)
-                self.r.rwheel.set_torque(0)
-                self.r.turret.set_torque(0)
-                break
-    	yield
+        yield self.forDuration(self.wait)
 
-    def stopping(self): 
-        # Set torque on both wheels to zero, used as a backup if buggy needs
-        # to be stopped
-        self.r.lwheel.set_torque(0)
+	self.r.lwheel.set_torque(0)
         self.r.rwheel.set_torque(0)
         self.r.turret.set_torque(0)
 
@@ -198,6 +180,7 @@ class RedBuggyApp( JoyApp ):
         self.turnP = RotatePlan(self)
         self.turretP = TurretPlan(self)
         self.dummyAutoP = dummyAutoPlan(self)
+        self.autoP = AutoPlan(self,self.sensor, self.moveP, self.turnP)
 
     def onEvent(self, evt):
         if evt.type != KEYDOWN:
@@ -214,18 +197,14 @@ class RedBuggyApp( JoyApp ):
                 self.moveP.torque = -1 * MOVE_TORQUE
                 self.moveP.start()
                 return progress("(say) Move back")
-            elif evt.key == K_w and not self.moveP.isRunning() or self.moveP.isRunning():
-                self.moveP.stopping()
-                self.turnP.stopping()
-                return progress("(say) Stopping")
             elif evt.key == K_LEFT and not self.turnP.isRunning():
                 # Turn left plan
-                self.turnP.torque = TURN_TORQUE
+                self.turnP.torque = -1 * TURN_TORQUE
                 self.turnP.start()
                 return progress("(say) Turn left")
             elif evt.key == K_RIGHT and not self.turnP.isRunning():
                 # Turn right plan
-                self.turnP.torque = -1 * TURN_TORQUE
+                self.turnP.torque =  TURN_TORQUE
                 self.turnP.start()
                 return progress("(say) Turn right")
             elif evt.key == K_a and not(self.turnP.isRunning() or self.moveP.isRunning()):
@@ -242,6 +221,12 @@ class RedBuggyApp( JoyApp ):
                 self.turretP.turretSpeed = -1*TURRET_TORQUE 
                 self.turretP.start()
                 return progress("(say) adjusted turret")
+            elif evt.key == K_e and not (self.turnP.isRunning() or  self.moveP.isRunning()):
+                self.autoP.start()
+                return progress("(say) Moving autonomously")
+            elif evt.key == K_r and not (self.turnP.isRunning() or  self.moveP.isRunning()):
+                self.autoP.stopping()
+                return progress("(say) Stop autonomous control")
 
 
 #runs on main

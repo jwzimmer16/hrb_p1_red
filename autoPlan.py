@@ -11,7 +11,7 @@ Created on Wed Feb 22 13:30:48 2017
 """
 
 # The main program is a JoyApp
-from joy import Plan
+from joy import Plan, progress
 
 # Include all the modeling functions provided to the teams
 #  this ensures that what the server does is consistent with the model given
@@ -23,13 +23,16 @@ from joy import Plan
 
 # initialize constants 
 MOVE_TORQUE = 0.2
-MOVE_DUR = 1
+MOVE_DUR = 0.5
 
 TURN_TORQUE = 0.2
-TURN_DUR = 1
+TURN_DUR = 0.25
 
 ROBOT_WIDTH = 0.3 #in cm
 TURRET_TORQUE = 0.1
+
+SENSE_THRESH = 5
+DIFF_THRESH = 10
 
 
 class AutoPlan( Plan ):
@@ -53,7 +56,8 @@ class AutoPlan( Plan ):
         self.initState()
         # Save movement and turning plans
         self.moveP = movePlan
-        self.turnP = turnPlan   
+        self.turnP = turnPlan 
+	self.stop = False  
 
         
     def initState( self ):
@@ -76,64 +80,74 @@ class AutoPlan( Plan ):
         """
         Plan main loop
         """
-        while True:
+        while not self.stop:
             ts,f,b = self.sp.lastSensor
             ts_w,w = self.sp.lastWaypoints
-            
+            progress("(say)f: " +str(f))
+	    progress("(say)b: "+str(b))
+   
             if ts > self.stateInfo["ts"]:
             
-                if (f<self.SENSE_THRESH or b<self.SENSE_THRESH):
+                if (f<SENSE_THRESH or b<SENSE_THRESH):
                     if (len(w) == 4):
                     # Sensors not orthogonal and no delta info available
                     # Should be for initial movement from 1st waypoint
 
                         self.moveP.torque = MOVE_TORQUE
-                        yield self.moveP.start()
-                        
-                    elif (f < self.SENSE_THRESH and b >= self.SENSE_THRESH):
+                        yield self.moveP
 
-                        self.turnP.torque = TURN_TORQUE
-                        self.moveP.torque = MOVE_TORQUE
-                        yield self.turnP.start()
-                        yield self.moveP.start()
-                    
-                    elif (b < self.SENSE_THRESH and f >= self.SENSE_THRESH):
+                    elif (f < SENSE_THRESH and b >= SENSE_THRESH):
 
                         self.turnP.torque = -TURN_TORQUE
                         self.moveP.torque = MOVE_TORQUE
-                        yield self.turnP.start()
-                        yield self.moveP.start()
-                        
-                    else:
+                        yield self.turnP
+                        yield self.moveP
 
+                    elif (b < SENSE_THRESH and f >= SENSE_THRESH):
+
+                        self.turnP.torque = TURN_TORQUE
+                        self.moveP.torque = MOVE_TORQUE
+                        yield self.turnP
+                        yield self.moveP
+
+                    else:
                         self.turnP.torque = 2*TURN_TORQUE
                         self.moveP.torque = 2*MOVE_TORQUE
-                        yield self.turnP.start()
-                        yield self.moveP.start()
+                        yield self.turnP
+                        yield self.moveP 
                     
-                elif (f > self.SENSE_THRESH and b > self.SENSE_THRESH):
+                elif (f > SENSE_THRESH and b > SENSE_THRESH):
                     
                     dist_dif = f-b
                     
-                    if (abs(dist_dif) < self.DIFF_THRESH):
+                    if (abs(dist_dif) < DIFF_THRESH):
    
                         self.moveP.torque = MOVE_TORQUE
-                        yield self.moveP.start()
+                        yield self.moveP
 
-                    elif (dist_dif >= self.DIFF_THRESH):
-
-                        self.turnP.torque = TURN_TORQUE
-                        self.moveP.torque = MOVE_TORQUE
-                        yield self.turnP.start()
-                        yield self.moveP.start()
-                        
-                    elif (dist_dif <= self.DIFF_THRESH):
+                    elif (dist_dif >= DIFF_THRESH):
 
                         self.turnP.torque = -TURN_TORQUE
                         self.moveP.torque = MOVE_TORQUE
-                        yield self.turnP.start()
-                        yield self.moveP.start()
+                        yield self.turnP
+                        yield self.moveP
+                        
+                    elif (dist_dif <= DIFF_THRESH):
+
+                        self.turnP.torque = TURN_TORQUE
+                        self.moveP.torque = MOVE_TORQUE
+                        yield self.turnP
+                        yield self.moveP
                         
             self.updateState(ts,f,b,w)
-            
+            yield 
+     
+    def stopping(self): 
+        # Set torque on both wheels to zero, used as a backup if buggy needs
+        # to be stopped
+        self.r.lwheel.set_torque(0)
+        self.r.rwheel.set_torque(0)
+        self.r.turret.set_torque(0)
+	self.stop = True
+        
       
