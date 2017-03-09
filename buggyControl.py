@@ -21,6 +21,7 @@ from socket import (
 from syncmx import *
 from sensorPlanTCP import SensorPlanTCP
 from autoPlan import AutoPlan
+from autoPlanSM import AutoPlanSM
 from joy import *
 import time
 
@@ -29,13 +30,17 @@ SERVO_NAMES = {
 }
 MOVE_TORQUE = 0.2
 MOVE_DUR = 0.25
-WAIT_DUR = 1
+WAIT_DUR = 5
 
 TURN_TORQUE = 0.2
 TURN_DUR = 0.25
 ROBOT_WIDTH = 0.3 #in cm
 TURRET_TORQUE = 0.1
 
+
+# Changed this to just a testing app. Specifically, tests how movePlan and turnPlan work
+# when called consecutively (i.e. testing that the delays work, verifying that the autoPlan
+# has a reasonable method of executing consecutive actions)
 class dummyAutoPlan( Plan ):
     """
     Plan that moves buggy forward or backward by setting equal torque on wheels
@@ -45,31 +50,31 @@ class dummyAutoPlan( Plan ):
     To move buggy backwards set torque to a negative value.
     """
 
-    def __init__(self,app):
+    def __init__(self,app, movePlan, turnPlan ):
 	Plan.__init__(self,app)
         self.r = self.app.robot.at
         self.torque = MOVE_TORQUE
-        self.dur = MOVE_DUR
-	self.wait = WAIT_DUR
-
+        self.moveP = movePlan
+        self.turnP = turnPlan
+	self.wait = 6
 
     def behavior(self):
-        # Set timeout stamp
-        timeout = time.time() + 6
-
         # Set torque to move wheels. Right wheel must be opposite of left wheel
         # due to orientation of motors
-        self.r.lwheel.set_torque(self.torque)
-        self.r.rwheel.set_torque(-1*self.torque)
+        self.turnP.torque = self.torque
+        self.moveP.torque = -1*self.torque
+        yield self.moveP
+        yield self.turnP
+        yield self.moveP
+        yield self.turnP
+        yield self.moveP
+        yield self.turnP
 
-        # Set torque to 0 after time duration to stop moving
-        while True:
-            if time.time() > timeout:
-                self.r.lwheel.set_torque(0)
-                self.r.rwheel.set_torque(0)
-                self.r.turret.set_torque(0)
-                break
-    	yield
+        yield self.forDuration(self.wait)
+
+	self.r.lwheel.set_torque(0)
+        self.r.rwheel.set_torque(0)
+        self.r.turret.set_torque(0)
 
 
 class MovePlan( Plan ):
@@ -95,7 +100,7 @@ class MovePlan( Plan ):
         self.r.lwheel.set_torque(-1*self.torque)
         self.r.rwheel.set_torque(self.torque)
 
-        yield self.forDuration(self.wait)
+        yield self.forDuration(self.dur)
 
 	self.r.lwheel.set_torque(0)
         self.r.rwheel.set_torque(0)
@@ -120,8 +125,6 @@ class RotatePlan( Plan ):
 
 
     def behavior(self):
-        # Set timeout stamp
-        timeout = time.time() + self.dur
 
         # Set torque to move wheels. Motors are oriented to move in opposite
         # directions with same torque
@@ -129,7 +132,7 @@ class RotatePlan( Plan ):
         self.r.rwheel.set_torque(self.torque)
         self.r.turret.set_torque(self.torque*0.4)        
 
-        yield self.forDuration(self.wait)
+        yield self.forDuration(self.dur)
 
 	self.r.lwheel.set_torque(0)
         self.r.rwheel.set_torque(0)
@@ -179,8 +182,9 @@ class RedBuggyApp( JoyApp ):
         self.moveP = MovePlan(self)
         self.turnP = RotatePlan(self)
         self.turretP = TurretPlan(self)
-        self.dummyAutoP = dummyAutoPlan(self)
-        self.autoP = AutoPlan(self,self.sensor, self.moveP, self.turnP)
+        self.dummyAutoP = dummyAutoPlan(self, self.moveP, self.turnP)
+        #switched this to autplan sm
+        self.autoP = AutoPlanSM(self,self.sensor, self.moveP, self.turnP)
 
     def onEvent(self, evt):
         if evt.type != KEYDOWN:
