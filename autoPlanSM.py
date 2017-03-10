@@ -12,6 +12,7 @@ Created on Wed Feb 22 13:30:48 2017
 
 # The main program is a JoyApp
 from joy import Plan, progress
+import logging
 
 # Include all the modeling functions provided to the teams
 #  this ensures that what the server does is consistent with the model given
@@ -34,6 +35,8 @@ SENSE_THRESH = 2
 DIFF_THRESH = 1
 
 WAIT_DUR = 3
+
+logging.basicConfig(filename='example.log',level=logging.DEBUG)
 
 
 class AutoPlanSM( Plan ):
@@ -89,9 +92,10 @@ class AutoPlanSM( Plan ):
             ts_w,w = self.sp.lastWaypoints
             progress("(say)f: " +str(f))
 	    progress("(say)b: "+str(b))
-            
+	    logging.info('State info (f: '+str(f)+ ' b: '+str(b)+'w: '+str(w)+ ')')
             if ts > self.stateInfo["ts"]:   
-                # Off the line
+
+                # One wheel outside of threshold
                 if (f<SENSE_THRESH or b<SENSE_THRESH):
                     progress("(say) in state 1")
                     # compare f and b directy to determine action: 
@@ -102,6 +106,7 @@ class AutoPlanSM( Plan ):
                         self.moveP.torque = MOVE_TORQUE
                         yield self.turnP
                         yield self.moveP
+			logging.info('Turning right (f: '+str(f)+ ' b: '+str(b)+'w: '+str(w)+ ')')
 
                     elif (b == 0): #b>f
                         progress("(say) turning right toward line")
@@ -109,18 +114,22 @@ class AutoPlanSM( Plan ):
                         self.moveP.torque = MOVE_TORQUE
                         yield self.turnP
                         yield self.moveP
+			logging.info('Turning left(f: '+str(f)+ ' b: '+str(b)+'w: '+str(w)+ ')')
 
                     else:
                         progress("(say) move and wait")
                         self.moveP.torque = 2*MOVE_TORQUE
                         yield self.moveP 
 			yield self.forDuration(2)
+			logging.info('Oh shit mode (f: '+str(f)+ ' b: '+str(b)+'w: '+str(w)+ ')')
 
                 elif (f > SENSE_THRESH and b > SENSE_THRESH):
                     progress("(say) in state 2")
                     dist_dif = f-b
                     self.moveP.torque = MOVE_TORQUE
                     yield self.moveP
+                    logging.info('on the line (f: '+str(f)+ ' b: '+str(b)+'w: '+str(w)+ ')')
+
                     """
                     if (abs(dist_dif) < DIFF_THRESH):
                         progress("(say) in state 1")
