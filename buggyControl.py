@@ -142,7 +142,7 @@ class RedBuggyApp( JoyApp ):
         self.moveP = MovePlan(self)
         self.turnP = RotatePlan(self)
         self.turretP = TurretPlan(self)
-        self.autoP = AutoPlan(self,self.sensor, self.moveP, self.turnP)
+        self.autoP = AutoPlanSM(self,self.sensor, self.moveP, self.turnP)
 
     def onEvent(self, evt):
         if evt.type != KEYDOWN:
