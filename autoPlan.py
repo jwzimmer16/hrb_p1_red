@@ -37,6 +37,11 @@ ROBOT_WIDTH = 0.3 #in cm
 TURRET_TORQUE = 0.1
 
 SENSE_THRESH = 90
+
+# two regions of interest: 
+OFF_LINE = 90
+ON_LINE = 150
+
 DIFF_THRESH = 20
 SUM_THRESH = 200
 
@@ -172,14 +177,14 @@ class AutoPlan( Plan ):
                     dist_dif = f-b
 		    sensor_sum = f + b
                     
-                    if (abs(dist_dif) < DIFF_THRESH ):
+                    if ( f > ON_LINE and b > ON_LINE):
    
                         self.moveP.torque = MOVE_TORQUE
                         yield self.moveP
 			progress("(say) On the line")
 			logging.info('On-line, moving straight. State info (f: '+str(f)+ ' b: '+str(b)+'w: '+str(w)+ ')')
 
-                    elif (dist_dif >= DIFF_THRESH):
+                    elif (f > ON_LINE and b < ON_LINE):
 
                         self.turnP.torque = RIGHT_TORQUE
                         self.moveP.torque = MOVE_TORQUE
@@ -189,7 +194,7 @@ class AutoPlan( Plan ):
 			self.stateInfo["angle"] += TURN_RES
 			logging.info('On-line, turning right. State info (f: '+str(f)+ ' b: '+str(b)+'w: '+str(w)+ ')')
                         
-                    elif (dist_dif <= DIFF_THRESH):
+                    elif (f < ON_LINE and b > ON_LINE):
 
                         self.turnP.torque = LEFT_TORQUE
                         self.moveP.torque = MOVE_TORQUE
