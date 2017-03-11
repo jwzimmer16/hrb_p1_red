@@ -8,7 +8,7 @@ in state machine.
 
 Created on Wed Feb 22 13:30:48 2017
 
-@author: jwzimmer
+@author: jswordy
 """
 
 # The main program is a JoyApp
@@ -18,7 +18,7 @@ import time
 
 
 # initialize constants 
-MOVE_TORQUE = 0.2
+MOVE_TORQUE = -0.2
 MOVE_DUR = 0.5
 
 TURN_TORQUE = 0.2
@@ -112,8 +112,7 @@ class AutoPlanSM( Plan ):
         """
         Plan main loop
         """
-        while not self.stop:
-           
+        while not self.stop:  
             ts,f,b = self.sp.lastSensor
             ts_w,w = self.sp.lastWaypoints
 	    sensor_sum = f + b
@@ -159,24 +158,65 @@ class AutoPlanSM( Plan ):
 
                         elif ( sensor_diff < DIFF_THRESH):
 			    self.moveP.torque = MOVE_TORQUE
-			    yield moveP
+			    yield self.moveP
 
 		    elif (sensor_sum > SUM_THRESH): 
 			self.turnP.torque = LEFT_TORQUE
 			yield self.turnP
+		        yield self.turnP
+		        yield self.turnP
 			t_new,f_new,b_new = self.sp.lastSensor
 			logging.info('On-Line, skewed. State info (f: '+str(f)+ ' b: '+str(b)+'w: '+str(w)+ ')')
 		        if( f_new + b_new > sensor_sum ):
 			    self.turnP.torque = RIGHT_TORQUE 
 			    yield self.turnP
+			    yield self.turnP 
+			    yield self.turnP
+			    yield self.turnP 
+			    yield self.turnP
 			    yield self.turnP   
-			    logging.info('On-line, skew overcorrection State info (f: '+str(f)+ ' b: '+str(b)+'w: '+str(w)+ ')'
-          	             
+			    logging.info('On-line, skew overcorrection State info (f: '+str(f)+ ' b: '+str(b)+'w: '+str(w)+ ')')
+                elif (f < OFF_LINE or b < OFF_LINE):
+		    if (f < b):
+		        self.turnP.torque = LEFT_TORQUE
+			self.moveP.torque = MOVE_TORQUE
+			yield self.turnP
+			yield self.turnP
+			yield self.turnP
+			yield self.moveP
+		    	yield self.moveP
+			yield self.moveP
+			yield self.moveP
+		    	yield self.moveP
+			yield self.moveP
+ 			self.turnP.torque = RIGHT_TORQUE
+			self.moveP.torque = MOVE_TORQUE
+			yield self.turnP
+			yield self.turnP
+			yield self.turnP
+			logging.info('Off line, correctiong to left. State info (f: '+str(f)+ ' b: '+str(b)+'w: '+str(w)+ ')')
+                    elif (f > b):
+ 			self.turnP.torque = RIGHT_TORQUE
+			self.moveP.torque = MOVE_TORQUE
+			yield self.turnP
+			yield self.turnP
+			yield self.turnP
+			yield self.moveP
+		    	yield self.moveP
+			yield self.moveP
+			yield self.moveP
+		    	yield self.moveP
+			yield self.moveP
+			self.turnP.torque = LEFT_TORQUE
+			self.moveP.torque = MOVE_TORQUE
+			yield self.turnP
+			yield self.turnP
+			yield self.turnP
+          	        logging.info('Off line, correcting to right. State info (f: '+str(f)+ ' b: '+str(b)+'w: '+str(w)+ ')')    
             # pause after every action because there is sensor lag
             yield self.forDuration(self.wait)
-
-	    self.updateState(ts,f,b,w)
-            yield 
+            self.updateState(ts,f,b,w)
+        yield 
      
     def stopping(self): 
         # Set torque on both wheels to zero, used as a backup if buggy needs
