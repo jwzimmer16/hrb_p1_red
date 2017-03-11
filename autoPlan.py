@@ -12,6 +12,7 @@ Created on Wed Feb 22 13:30:48 2017
 
 # The main program is a JoyApp
 from joy import Plan, progress
+import logging
 
 # Include all the modeling functions provided to the teams
 #  this ensures that what the server does is consistent with the model given
@@ -28,11 +29,15 @@ MOVE_DUR = 0.5
 TURN_TORQUE = 0.2
 TURN_DUR = 0.25
 
+RIGHT_TORQUE = TURN_TORQUE
+LEFT_TORQUE = -TURN_TORQUE
+
 ROBOT_WIDTH = 0.3 #in cm
 TURRET_TORQUE = 0.1
 
-SENSE_THRESH = 40
-DIFF_THRESH = 30
+SENSE_THRESH = 90
+DIFF_THRESH = 20
+SUM_THRESH = 200
 
 WAIT_DUR = 3
 
@@ -40,6 +45,7 @@ FILT_SAMPLES = 50 #Number of samples considered by simple moving average filter
 
 TURN_RES = 90/12 #number of degrees per autonomous turn command
 
+logging.basicConfig(filename='example.log',level=logging.DEBUG)
 
 class AutoPlan( Plan ):
     """
@@ -64,6 +70,7 @@ class AutoPlan( Plan ):
         self.moveP = movePlan
         self.turnP = turnPlan 
 	self.stop = False  
+	self.wait = WAIT_DUR
 
         
     def initState( self ):
@@ -110,37 +117,42 @@ class AutoPlan( Plan ):
             progress("(say)f: " +str(f))
 	    progress("(say)b: "+str(b))
             progress("(say)w: "+str(w))
-   
+
             if ts > self.stateInfo["ts"]:
 
             
                 if (f<SENSE_THRESH or b<SENSE_THRESH):
-                    if (len(w) == 4):
+                    if (len(w) == 4 and f == None or b == None):
                     # Sensors not orthogonal and no delta info available
                     # Should be for initial movement from 1st waypoint
 
                         self.moveP.torque = MOVE_TORQUE
                         yield self.moveP
 			progress("(say) Hunting")
+                        logging.info('Hunting Mode. State info (f: '+str(f)+ ' b: '+str(b)+'w: '+str(w)+ ')')
+                    #if (f < SENSE_THRESH and b >= SENSE_THRESH):
+		    if (f < b):
 
-                    if (f < SENSE_THRESH and b >= SENSE_THRESH):
-
-                        self.turnP.torque = -TURN_TORQUE
+                        self.turnP.torque = RIGHT_TORQUE
                         self.moveP.torque = MOVE_TORQUE
                         yield self.turnP
+		        yield self.turnP
                         yield self.moveP
 			progress("(say) Turning right")
 			self.stateInfo["angle"] += TURN_RES
+                        logging.info('Off-Line, Turning Right. State info (f: '+str(f)+ ' b: '+str(b)+'w: '+str(w)+ ')')
 
-                    elif (b < SENSE_THRESH and f >= SENSE_THRESH):
-
-                        self.turnP.torque = TURN_TORQUE
+                    #elif (b < SENSE_THRESH and f >= SENSE_THRESH):
+		    elif (b < f):
+                        self.turnP.torque = LEFT_TORQUE
                         self.moveP.torque = MOVE_TORQUE
+                        yield self.turnP
                         yield self.turnP
                         yield self.moveP
 			progress("(say) Turning left")
 			self.stateInfo["angle"] -= TURN_RES
-
+			logging.info('Off-line, turning left. State info (f: '+str(f)+ ' b: '+str(b)+'w: '+str(w)+ ')')
+		    
                     else:
                         self.turnP.torque = 2*TURN_TORQUE
                         self.moveP.torque = 2*MOVE_TORQUE
@@ -148,34 +160,39 @@ class AutoPlan( Plan ):
                         yield self.moveP 
 			progress("(say) Turning left")
 			self.stateInfo["angle"] += 2*TURN_RES
-                    
+			logging.info('Off-line, else. State info (f: '+str(f)+ ' b: '+str(b)+'w: '+str(w)+ ')')
+          	             
                 elif (f > SENSE_THRESH and b > SENSE_THRESH):
                     
                     dist_dif = f-b
+		    sensor_sum = f + b
                     
-                    if (abs(dist_dif) < DIFF_THRESH):
+                    if (abs(dist_dif) < DIFF_THRESH ):
    
                         self.moveP.torque = MOVE_TORQUE
                         yield self.moveP
 			progress("(say) On the line")
+			logging.info('On-line, moving straight. State info (f: '+str(f)+ ' b: '+str(b)+'w: '+str(w)+ ')')
 
                     elif (dist_dif >= DIFF_THRESH):
 
-                        self.turnP.torque = -TURN_TORQUE
+                        self.turnP.torque = RIGHT_TORQUE
                         self.moveP.torque = MOVE_TORQUE
                         yield self.turnP
                         yield self.moveP
 			progress("(say) unsure 1")
 			self.stateInfo["angle"] += TURN_RES
+			logging.info('On-line, turning right. State info (f: '+str(f)+ ' b: '+str(b)+'w: '+str(w)+ ')')
                         
                     elif (dist_dif <= DIFF_THRESH):
 
-                        self.turnP.torque = TURN_TORQUE
+                        self.turnP.torque = LEFT_TORQUE
                         self.moveP.torque = MOVE_TORQUE
                         yield self.turnP
                         yield self.moveP
 			progress("(say) unsure 2")
 			self.stateInfo["angle"] += TURN_RES
+			logging.info('On-line, turning left. State info (f: '+str(f)+ ' b: '+str(b)+'w: '+str(w)+ ')')
             
             # pause after every action because there is sensor lag
             yield self.forDuration(self.wait)
