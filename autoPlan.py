@@ -13,6 +13,7 @@ Created on Wed Feb 22 13:30:48 2017
 # The main program is a JoyApp
 from joy import Plan, progress
 import logging
+import time
 
 # Include all the modeling functions provided to the teams
 #  this ensures that what the server does is consistent with the model given
@@ -45,7 +46,11 @@ FILT_SAMPLES = 50 #Number of samples considered by simple moving average filter
 
 TURN_RES = 90/12 #number of degrees per autonomous turn command
 
-logging.basicConfig(filename='example.log',level=logging.DEBUG)
+logdatetime = time.strftime("%I:%M:%S_%m_%d")
+logging.basicConfig(format='(logdatetime)s:%(levelname)s:%(message)s',
+		    filename='autoLog_' + logdatetime+'.log',
+		    datefmt='%m/%d/%Y %I:%M:%S %p',
+		    level=logging.INFO)
 
 class AutoPlan( Plan ):
     """
