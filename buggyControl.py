@@ -37,46 +37,6 @@ TURN_DUR = 0.2
 ROBOT_WIDTH = 0.3 #in cm
 TURRET_TORQUE = 0.1
 
-
-# Changed this to just a testing app. Specifically, tests how movePlan and turnPlan work
-# when called consecutively (i.e. testing that the delays work, verifying that the autoPlan
-# has a reasonable method of executing consecutive actions)
-class dummyAutoPlan( Plan ):
-    """
-    Plan that moves buggy forward or backward by setting equal torque on wheels
-    for a fixed duration of time.
-
-    Torque and Duration are public variables that can be modified on the fly.
-    To move buggy backwards set torque to a negative value.
-    """
-
-    def __init__(self,app, movePlan, turnPlan ):
-	Plan.__init__(self,app)
-        self.r = self.app.robot.at
-        self.torque = MOVE_TORQUE
-        self.moveP = movePlan
-        self.turnP = turnPlan
-	self.wait = 6
-
-    def behavior(self):
-        # Set torque to move wheels. Right wheel must be opposite of left wheel
-        # due to orientation of motors
-        self.turnP.torque = self.torque
-        self.moveP.torque = -1*self.torque
-        yield self.moveP
-        yield self.turnP
-        yield self.moveP
-        yield self.turnP
-        yield self.moveP
-        yield self.turnP
-
-        yield self.forDuration(self.wait)
-
-	self.r.lwheel.set_torque(0)
-        self.r.rwheel.set_torque(0)
-        self.r.turret.set_torque(0)
-
-
 class MovePlan( Plan ):
     """
     Plan that moves buggy forward or backward by setting equal torque on wheels
@@ -182,15 +142,18 @@ class RedBuggyApp( JoyApp ):
         self.moveP = MovePlan(self)
         self.turnP = RotatePlan(self)
         self.turretP = TurretPlan(self)
-        self.dummyAutoP = dummyAutoPlan(self, self.moveP, self.turnP)
-        #switched this to autplan sm
-        self.autoP = AutoPlanSM(self,self.sensor, self.moveP, self.turnP)
+        self.autoP = AutoPlan(self,self.sensor, self.moveP, self.turnP)
 
     def onEvent(self, evt):
         if evt.type != KEYDOWN:
                 return
 
         if evt.type == KEYDOWN:
+            ts,f,b = self.sensor.lastSensor
+            ts_w,w = self.sensor.lastWaypoints
+            progress("(say)f: " +str(f))
+	    progress("(say)b: "+str(b))
+            progress("(say)w: "+str(w))
             if evt.key == K_UP and not self.moveP.isRunning():
                 # Forward plan
                 self.moveP.torque = MOVE_TORQUE
@@ -212,10 +175,10 @@ class RedBuggyApp( JoyApp ):
                 self.turnP.start()
                 return progress("(say) Turn right")
             elif evt.key == K_a and not(self.turnP.isRunning() or self.moveP.isRunning()):
-                self.dummyAutoP.start()
+                self.autoP.start()
                 return progress("(say) Moving autonomously")
             elif evt.key == K_s and not(self.turnP.isRunning() or self.moveP.isRunning()):
-                self.dummyAutoP.stop()
+                self.autoP.stop()
                 return progress("(say) Stop autonomous control")
             elif evt.key == K_m and not (self.turnP.isRunning() or  self.moveP.isRunning()):
                 self.turretP.turretSpeed = TURRET_TORQUE 
@@ -225,13 +188,8 @@ class RedBuggyApp( JoyApp ):
                 self.turretP.turretSpeed = -1*TURRET_TORQUE 
                 self.turretP.start()
                 return progress("(say) adjusted turret")
-            elif evt.key == K_e and not (self.turnP.isRunning() or  self.moveP.isRunning()):
-                self.autoP.start()
-                return progress("(say) Moving autonomously")
-            elif evt.key == K_r and not (self.turnP.isRunning() or  self.moveP.isRunning()):
-                self.autoP.stopping()
-                return progress("(say) Stop autonomous control")
-
+	
+   
 
 #runs on main
 if __name__=="__main__":
