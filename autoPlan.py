@@ -127,7 +127,7 @@ class AutoPlan( Plan ):
             progress("(say)f: " +str(f))
 	    progress("(say)b: "+str(b))
             progress("(say)w: "+str(w))
-
+            
             if ts > self.stateInfo["ts"]:
 
             
@@ -186,30 +186,31 @@ class AutoPlan( Plan ):
 
                     elif (f > ON_LINE and b < ON_LINE):
 
-                        self.turnP.torque = RIGHT_TORQUE
+                        self.turnP.torque = LEFT_TORQUE
                         self.moveP.torque = MOVE_TORQUE
                         yield self.turnP
                         yield self.moveP
 			progress("(say) unsure 1")
 			self.stateInfo["angle"] += TURN_RES
-			logging.info('On-line, turning right. State info (f: '+str(f)+ ' b: '+str(b)+'w: '+str(w)+ ')')
+			logging.info('On-line, turning left. State info (f: '+str(f)+ ' b: '+str(b)+'w: '+str(w)+ ')')
                         
                     elif (f < ON_LINE and b > ON_LINE):
 
-                        self.turnP.torque = LEFT_TORQUE
+                        self.turnP.torque = RIGHT_TORQUE
                         self.moveP.torque = MOVE_TORQUE
                         yield self.turnP
                         yield self.moveP
 			progress("(say) unsure 2")
 			self.stateInfo["angle"] += TURN_RES
-			logging.info('On-line, turning left. State info (f: '+str(f)+ ' b: '+str(b)+'w: '+str(w)+ ')')
+			logging.info('On-line, turning right. State info (f: '+str(f)+ ' b: '+str(b)+'w: '+str(w)+ ')')
             
             # pause after every action because there is sensor lag
             yield self.forDuration(self.wait)
 
 	    self.updateState(ts,f,b,w)
             yield 
-     
+            
+           
     def stopping(self): 
         # Set torque on both wheels to zero, used as a backup if buggy needs
         # to be stopped
