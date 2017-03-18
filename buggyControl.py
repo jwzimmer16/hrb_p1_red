@@ -21,7 +21,7 @@ from socket import (
 from syncmx import *
 from sensorPlanTCP import SensorPlanTCP
 from autoPlan import AutoPlan
-from autoPlanSM import AutoPlanSM
+from autoPlanPF import AutoPlan
 from joy import *
 import time
 
@@ -30,7 +30,7 @@ SERVO_NAMES = {
 }
 MOVE_TORQUE = 0.2
 MOVE_DUR = 0.25
-WAIT_DUR = 5
+WAIT_DUR = 2
 
 TURN_TORQUE = 0.2
 TURN_DUR = 0.2
@@ -142,7 +142,7 @@ class RedBuggyApp( JoyApp ):
         self.moveP = MovePlan(self)
         self.turnP = RotatePlan(self)
         self.turretP = TurretPlan(self)
-        self.autoP = AutoPlanSM(self,self.sensor, self.moveP, self.turnP)
+        self.autoP = AutoPlan(self,self.sensor, self.moveP, self.turnP)
 
     def onEvent(self, evt):
         if evt.type != KEYDOWN:
