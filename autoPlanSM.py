@@ -8,17 +8,18 @@ in state machine.
 
 Created on Wed Feb 22 13:30:48 2017
 
-@author: jwzimmer
+@author: jswordy
 """
 
 # The main program is a JoyApp
 from joy import Plan, progress
 import logging
 import time
+from math import sqrt, pow
 
 
 # initialize constants 
-MOVE_TORQUE = 0.2
+MOVE_TORQUE = -0.2
 MOVE_DUR = 0.5
 
 TURN_TORQUE = 0.2
@@ -97,7 +98,7 @@ class AutoPlanSM( Plan ):
     # Simple moving average filter, also acts as a delay (eventually will be Kalman filter)
     # Potentially disastrous approach to measurment filtering, should be filtering
     # line position itself (but no obvious way to back f and b out from that)
-    def filterState( self, ts, forward, back): 
+    def filterState( self, ts, forward, back ): 
         fSum = forward
 	bSum = backward
       
@@ -106,14 +107,27 @@ class AutoPlanSM( Plan ):
 	    fSum += f
       	    bSum += b
 	self.stateInfo["f"] = fSum/FILT_SAMPLES 
-	self.stateInfo["b"] = bSum/FILT_SAMPLES       
+	self.stateInfo["b"] = bSum/FILT_SAMPLES    
+
+	
+    # LAW OF COSINE stuff
+    def getLineDist( self, p1, p2):
+	return sqrt( pow( (p1[0]-p2[0], 2) ) + pow( (p1[1]-p2[1], 2) )
+
+    def getAngle( self, wayp0, wayp1, wayp2):  
+	dist01 = getLineDist(wayp0, wayp1)
+	dist12 = getLineDist(wayp1, wayp2)
+	dist02 = getLineDist(wayp0, wayp2)
+
+	return acos( (pow(dist01,2) + pow(dist12,2) - pow(dist02,2)) / (2 * dist01 * dist12))
+	
+	 
 
     def behavior( self ):
         """
         Plan main loop
         """
-        while not self.stop:
-           
+        while not self.stop:  
             ts,f,b = self.sp.lastSensor
             ts_w,w = self.sp.lastWaypoints
 	    sensor_sum = f + b
@@ -159,24 +173,65 @@ class AutoPlanSM( Plan ):
 
                         elif ( sensor_diff < DIFF_THRESH):
 			    self.moveP.torque = MOVE_TORQUE
-			    yield moveP
+			    yield self.moveP
 
 		    elif (sensor_sum > SUM_THRESH): 
 			self.turnP.torque = LEFT_TORQUE
 			yield self.turnP
+		        yield self.turnP
+		        yield self.turnP
 			t_new,f_new,b_new = self.sp.lastSensor
 			logging.info('On-Line, skewed. State info (f: '+str(f)+ ' b: '+str(b)+'w: '+str(w)+ ')')
 		        if( f_new + b_new > sensor_sum ):
 			    self.turnP.torque = RIGHT_TORQUE 
 			    yield self.turnP
+			    yield self.turnP 
+			    yield self.turnP
+			    yield self.turnP 
+			    yield self.turnP
 			    yield self.turnP   
-			    logging.info('On-line, skew overcorrection State info (f: '+str(f)+ ' b: '+str(b)+'w: '+str(w)+ ')'
-          	             
+			    logging.info('On-line, skew overcorrection State info (f: '+str(f)+ ' b: '+str(b)+'w: '+str(w)+ ')')
+                elif (f < OFF_LINE or b < OFF_LINE):
+		    if (f < b):
+		        self.turnP.torque = LEFT_TORQUE
+			self.moveP.torque = MOVE_TORQUE
+			yield self.turnP
+			yield self.turnP
+			yield self.turnP
+			yield self.moveP
+		    	yield self.moveP
+			yield self.moveP
+			yield self.moveP
+		    	yield self.moveP
+			yield self.moveP
+ 			self.turnP.torque = RIGHT_TORQUE
+			self.moveP.torque = MOVE_TORQUE
+			yield self.turnP
+			yield self.turnP
+			yield self.turnP
+			logging.info('Off line, correctiong to left. State info (f: '+str(f)+ ' b: '+str(b)+'w: '+str(w)+ ')')
+                    elif (f > b):
+ 			self.turnP.torque = RIGHT_TORQUE
+			self.moveP.torque = MOVE_TORQUE
+			yield self.turnP
+			yield self.turnP
+			yield self.turnP
+			yield self.moveP
+		    	yield self.moveP
+			yield self.moveP
+			yield self.moveP
+		    	yield self.moveP
+			yield self.moveP
+			self.turnP.torque = LEFT_TORQUE
+			self.moveP.torque = MOVE_TORQUE
+			yield self.turnP
+			yield self.turnP
+			yield self.turnP
+          	        logging.info('Off line, correcting to right. State info (f: '+str(f)+ ' b: '+str(b)+'w: '+str(w)+ ')')    
             # pause after every action because there is sensor lag
             yield self.forDuration(self.wait)
-
-	    self.updateState(ts,f,b,w)
-            yield 
+            self.updateState(ts,f,b,w)
+        yield 
      
     def stopping(self): 
         # Set torque on both wheels to zero, used as a backup if buggy needs
