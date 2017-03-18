@@ -15,6 +15,7 @@ Created on Wed Feb 22 13:30:48 2017
 from joy import Plan, progress
 import logging
 import time
+from math import sqrt, pow
 
 
 # initialize constants 
@@ -97,7 +98,7 @@ class AutoPlanSM( Plan ):
     # Simple moving average filter, also acts as a delay (eventually will be Kalman filter)
     # Potentially disastrous approach to measurment filtering, should be filtering
     # line position itself (but no obvious way to back f and b out from that)
-    def filterState( self, ts, forward, back): 
+    def filterState( self, ts, forward, back ): 
         fSum = forward
 	bSum = backward
       
@@ -106,7 +107,21 @@ class AutoPlanSM( Plan ):
 	    fSum += f
       	    bSum += b
 	self.stateInfo["f"] = fSum/FILT_SAMPLES 
-	self.stateInfo["b"] = bSum/FILT_SAMPLES       
+	self.stateInfo["b"] = bSum/FILT_SAMPLES    
+
+	
+    # LAW OF COSINE stuff
+    def getLineDist( self, p1, p2):
+	return sqrt( pow( (p1[0]-p2[0], 2) ) + pow( (p1[1]-p2[1], 2) )
+
+    def getAngle( self, wayp0, wayp1, wayp2):  
+	dist01 = getLineDist(wayp0, wayp1)
+	dist12 = getLineDist(wayp1, wayp2)
+	dist02 = getLineDist(wayp0, wayp2)
+
+	return acos( (pow(dist01,2) + pow(dist12,2) - pow(dist02,2)) / (2 * dist01 * dist12))
+	
+	 
 
     def behavior( self ):
         """
