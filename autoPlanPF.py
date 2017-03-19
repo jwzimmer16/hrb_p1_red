@@ -87,7 +87,7 @@ class AutoPlan( Plan ):
 	    v3 = math.hypot(w[i][0] - w[i+2][0], w[i][1] - w[i+2][1])
 	    num = ((v3**2) - (v2**2) - (v1**2))/(-2*v1*v2)
 	    angle = math.acos(num)
-	    angle = angle*(180/math.pi)
+	    angle = 180 - angle*(180/math.pi)
 	    self.stateInfo["trajectoryList"].append(int(-1*angle))
 	    i = i + 1
 
@@ -170,7 +170,7 @@ class AutoPlan( Plan ):
 			n = abs(n)
 			#check to see if the next turn will over-wind the robot (orient>180)
 			if ( abs(self.stateInfo["orientation"] - theta_diff) > 150 ):
-			    # don't forget to alter the n logic
+			    n = 12 - n
 			    self.stateInfo["backwards"] = True
 			    self.stateInfo["forward"] = -1*MOVE_TORQUE
 			    self.stateInfo["left"], self.stateInfo["right"] = RIGHT_TORQUE, LEFT_TORQUE	
