@@ -8,13 +8,14 @@ in state machine.
 
 Created on Wed Feb 22 13:30:48 2017
 
-@author: jwzimmer
+@author: jwzimmer, jswordy, menonmeg
 """
 
 # The main program is a JoyApp
 from joy import Plan, progress
 import logging
 import time
+import math
 
 
 # initialize constants 
@@ -76,21 +77,36 @@ class AutoPlan( Plan ):
 	self.stop = False  
 	self.wait = WAIT_DUR
 
-        
+    def writeAngleInit( self ):
+	ts_w,w = self.sp.lastWaypoints
+	
+	i = 0
+	while i < (len(w) - 2):
+	    v1 = math.hypot(w[i][0] - w[i+1][0],w[i][1] - w[i+1][1])
+	    v2 = math.hypot(w[i+1][0] - w[i+2][0], w[i+1][1] - w[i+2][1])
+	    v3 = math.hypot(w[i][0] - w[i+2][0], w[i][1] - w[i+2][1])
+	    num = ((v3**2) - (v2**2) - (v1**2))/(-2*v1*v2)
+	    angle = math.acos(num)
+	    angle = angle*(180/math.pi)
+	    self.stateInfo["trajectoryList"].append(int(-1*angle))
+	    i = i + 1
+
+	#Then, calculate vector between remaining waypoints, i.e. (0,1), (1,2), (2,3), or just (1,2) and (2,3) using loop
+	#Then, calculate angle between each pair of vectors using law of cosines
+	progress(str(self.stateInfo["trajectoryList"]))
+
     def initState( self ):
         ts,f,b = self.sp.lastSensor
 	ts_w,w = self.sp.lastWaypoints
-
 	#eventually use law of cosines on waypoint list
-	self.stateInfo["trajectoryList"] = [0, -90, -190]
 
         self.stateInfo["ts"] = ts
         self.stateInfo["f"] = f
         self.stateInfo["b"] = b
         self.stateInfo["lastf"] = f
         self.stateInfo["lastb"] = b
+	self.stateInfo["trajectoryList"] = [0]
 
-	self.stateInfo["trajectory"] = self.stateInfo["trajectoryList"][0]
 	self.stateInfo["orientation"] = 0
 	self.stateInfo["forward"] = MOVE_TORQUE
 	self.stateInfo["left"] = LEFT_TORQUE
@@ -102,7 +118,8 @@ class AutoPlan( Plan ):
     def updateTrajectory( self ):
 	#eventually use law of cosines and UPDATE trajectory list to check for moved waypoints
 	#someLawofCosinesFcn
-	self.stateInfo["trajectoryList"].pop(0)
+	self.writeAngleInit()
+	self.stateInfo["trajectory"] = self.stateInfo["trajectoryList"][0]
         
     def updateState( self, timestamp, forw, back, waypoints):
         self.stateInfo["ts"] = timestamp
@@ -115,11 +132,14 @@ class AutoPlan( Plan ):
         """
         Plan main loop
         """
-	
+	self.writeAngleInit()
+	self.stateInfo["trajectory"] = self.stateInfo["trajectoryList"][0]
+ 
         while not self.stop:
            
             ts,f,b = self.sp.lastSensor
 	    ts_w,w = self.sp.lastWaypoints
+	    
 	    sensor_sum = f + b
 	    sensor_diff = f - b
 
