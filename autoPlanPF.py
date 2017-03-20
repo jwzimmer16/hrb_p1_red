@@ -150,11 +150,11 @@ class AutoPlan( Plan ):
     def updateSoftwareState( self,f,b ):
 	#ts,f,b = self.sp.lastSensor
 	if ( f <= MIN_THRESH or b <= MIN_THRESH ): 
-	    self.stateInfo["state"] == 1
+	    self.stateInfo["state"] = 1
 	elif ( f >= OFF_LINE or b >= OFF_LINE ): 
-	    self.stateInfo["state"] == 2	
+	    self.stateInfo["state"] = 2	
 	elif ( ((f > MIN_THRESH and f < OFF_LINE ) and (b > 90)) or (( b > MIN_THRESH and b < OFF_LINE ) and (f>90)) or ((b > MIN_THRESH and b < OFF_LINE)and(f > MIN_THRESH and f < OFF_LINE))):
-	   self.stateInfo["state"] == 3
+	   self.stateInfo["state"] = 3
 	progress("In software update: " + str(self.stateInfo["state"]))
 	progress( "f: " + str(f))
 	progress( "b: " + str(b))
@@ -198,7 +198,7 @@ class AutoPlan( Plan ):
             if ts > self.stateInfo["ts"]:
 
 		#Off of the line, Go hunting!
-		if ( f < MIN_THRESH or b < MIN_THRESH or self.stateInfo["switch"] == True):
+		if ( self.stateInfo["state"] == 1 ):
 		    #theta_diff = self.stateInfo["orientation"]  - self.stateInfo["trajectory"]
 		    theta_diff = -self.stateInfo["trajectory"] 
 
@@ -232,6 +232,7 @@ class AutoPlan( Plan ):
 		            self.turnP.torque = const*self.stateInfo["right"]
 			    self.stateInfo["orientation"] += -const*TURN_RES
 			    yield self.turnP
+
 			self.moveP.torque = self.stateInfo["forward"]
 		 	yield self.moveP	
 			self.updateLog(1,f,b,w)
@@ -240,8 +241,7 @@ class AutoPlan( Plan ):
 		    progress("switch changed" + str(self.stateInfo["switch"]))
 
 		# according to sensor data, robot is straddling the line
-                elif (f > OFF_LINE and b > OFF_LINE):
-		#elif ( self.stateInfo["switch"] == False ):
+		elif ( self.stateInfo["state"] == 2 ):
 		    if ( sensor_sum < SUM_THRESH ):
 		        if ( sensor_diff > DIFF_THRESH and f > b):
                             self.moveP.torque = self.stateInfo["forward"]
@@ -280,8 +280,8 @@ class AutoPlan( Plan ):
 			    self.stateInfo["orientation"] -= 2*TURN_RES
 			    self.updateLog(2,f,b,w)
 
-		elif ( f < OFF_LINE or b < OFF_LINE ):
-		    theta_diff = self.stateInfo["orientation"]  - self.stateInfo["trajectory"] 
+		elif ( self.stateInfo["state"] == 3 ):
+		    theta_diff =  - self.stateInfo["trajectory"] 
 		    n = theta_diff // TURN_RES
 
 		    # turn right
@@ -319,8 +319,9 @@ class AutoPlan( Plan ):
             # pause after every action because there is sensor lag
             yield self.forDuration(self.wait)
 
-	    #MUST do this before updateState, before numWaypoints is reset
-	    #for now, placeholder for trajectory calc function
+	    tss, fs, bs = self.sp.lastSensor
+            self.updateSoftwareState(fs, bs)
+
             ts_w,w = self.sp.lastWaypoints
 	    if( len(w) < self.stateInfo["numWaypoints"]):
 		self.updateTrajectory()
