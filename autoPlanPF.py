@@ -172,7 +172,8 @@ class AutoPlan( Plan ):
 
 		#Off of the line, Go hunting!
 		if ( f < MIN_THRESH or b < MIN_THRESH or self.stateInfo["switch"] == True):
-		    theta_diff = self.stateInfo["orientation"]  - self.stateInfo["trajectory"] 
+		    #theta_diff = self.stateInfo["orientation"]  - self.stateInfo["trajectory"]
+		    theta_diff = self.stateInfo["trajectory"] 
 
 		    # if within 15 degress of trajectory, move forward
 		    if( abs(theta_diff) < ANGLE_THRESH ):
@@ -195,7 +196,7 @@ class AutoPlan( Plan ):
 			# make n an appropriate loop index
 			n = abs(n)
 			#check to see if the next turn will over-wind the robot (orient>180)
-			if ( abs(self.stateInfo["orientation"] - theta_diff) > 150 ):
+			if ( abs(self.stateInfo["orientation"] + theta_diff) > 150 ):
 			    n = 12 - n
 			    self.stateInfo["backwards"] = True
 			    self.stateInfo["forward"] = -1*MOVE_TORQUE
