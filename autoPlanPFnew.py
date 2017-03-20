@@ -16,7 +16,7 @@ from joy import Plan, progress
 import logging
 import time
 import math
-
+from math import atan as arctan
 
 # initialize constants 
 MOVE_TORQUE = 0.2
@@ -157,11 +157,11 @@ class AutoPlan( Plan ):
     def updateSoftwareState( self,f,b ):
 	#ts,f,b = self.sp.lastSensor
 	if ( f < MIN_THRESH or b < MIN_THRESH ): 
-	    self.stateInfo["state"] == 1
+	    self.stateInfo["state"] = 1
 	elif ( f > OFF_LINE or b > OFF_LINE ): 
-	    self.stateInfo["state"] == 2	
-	elif ( (f > MIN_THRESH and f < OFF_LINE ) or ( b > MIN_THRESH and b < OFF_LINE )):
-	   self.stateInfo["state"] == 3
+	    self.stateInfo["state"] = 2	
+	elif ( ((f > MIN_THRESH and f < OFF_LINE ) and (b > 90)) or (( b > MIN_THRESH and b < OFF_LINE ) and (f>90)) or ((b > MIN_THRESH and b < OFF_LINE)and(f > MIN_THRESH and f < OFF_LINE))):
+	   self.stateInfo["state"] = 3
 	progress("In software update: " + str(self.stateInfo["state"]))
 	progress( "f: " + str(f))
 	progress( "b: " + str(b))
@@ -195,7 +195,7 @@ class AutoPlan( Plan ):
 	diff4 = cand4_d1 - cand4_d2
 	diffList = [diff1, diff2, diff3, diff4]
 
-	best = difflist.index(min(diffList))
+	best = diffList.index(min(diffList))
 	self.stateInfo["orientation"] = oList1[best]
 	self.stateInfo["distance"] = dList1[best]
 	self.stateInfo["orientationChecked"] = True
@@ -279,15 +279,7 @@ class AutoPlan( Plan ):
 		# according to sensor data, robot is straddling the line
                 elif (self.stateInfo["state"] == 2):
 
-		    if ( self.stateInfo["orientationChecked"] == False ):
-                        self.moveP.torque = self.stateInfo["forward"]
-		        yield self.moveP
-		        ts2,f2,b2 = self.sp.LastSensor
-		        updateOrientation(f, b, f2, b2)
-                        self.moveP.torque = -self.stateInfo["forward"]
-	       	        yield self.moveP
-
-		    angle_diff = self.stateInfo["orientation"] - self.stateInfo["trajectory"]
+		    angle_diff =  - self.stateInfo["trajectory"]
 		    if (angle_diff > ANGLE_THRESH):
 			self.correctOrientation(angle_diff)
 
@@ -318,8 +310,8 @@ class AutoPlan( Plan ):
 
 		# According to sensor data, robot is off the line, but in projection
 		elif ( self.stateInfo["state"] == 3 ):
-		    theta_diff = self.stateInfo["orientation"]  - self.stateInfo["trajectory"] 
-		    self.correctionOrientation(theta_diff)
+		    theta_diff =  - self.stateInfo["trajectory"] 
+		    self.correctOrientation(theta_diff)
 
 		    n = 6
 		    for i in range(n):
