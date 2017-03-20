@@ -134,6 +134,7 @@ class AutoPlan( Plan ):
 
         self.stateInfo["estPos"] = (0,0)
         self.stateInfo["numWaypoints"] = len(w)
+	self.stateInfo["state"] = 1 # 1: Hunting Mode, 2: Line Following, 3: Correcting
         self.stateInfo["switch"] = True
 	self.stateInfo["orientationChecked"] = False #once per trajectory, want to check orientation
         
@@ -145,6 +146,18 @@ class AutoPlan( Plan ):
 	progress("In update trajectory, new angle is " + str(self.stateInfo["trajectory"]))
         self.stateInfo["switch"] = True
 	self.stateInfo["orientationChecked"] = False 
+
+    def updateSoftwareState( self,f,b ):
+	#ts,f,b = self.sp.lastSensor
+	if ( f <= MIN_THRESH or b <= MIN_THRESH ): 
+	    self.stateInfo["state"] == 1
+	elif ( f >= OFF_LINE or b >= OFF_LINE ): 
+	    self.stateInfo["state"] == 2	
+	elif ( ((f > MIN_THRESH and f < OFF_LINE ) and (b > 90)) or (( b > MIN_THRESH and b < OFF_LINE ) and (f>90)) or ((b > MIN_THRESH and b < OFF_LINE)and(f > MIN_THRESH and f < OFF_LINE))):
+	   self.stateInfo["state"] == 3
+	progress("In software update: " + str(self.stateInfo["state"]))
+	progress( "f: " + str(f))
+	progress( "b: " + str(b))
         
     def updateState( self, timestamp, forw, back, waypoints):
         self.stateInfo["ts"] = timestamp
@@ -312,6 +325,7 @@ class AutoPlan( Plan ):
 	    if( len(w) < self.stateInfo["numWaypoints"]):
 		self.updateTrajectory()
 
+	    self.updateSoftwareState(f,b)
 	    self.updateState(ts,f,b,w)
 	    
             yield 
