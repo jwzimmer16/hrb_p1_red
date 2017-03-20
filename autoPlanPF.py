@@ -106,7 +106,7 @@ class AutoPlan( Plan ):
 	    num = ((v3**2) - (v2**2) - (v1**2))/(-2*v1*v2)
 	    angle = math.acos(num)
 	    angle = angle*(180/math.pi)
-	    self.stateInfo["trajectoryList"][i] = (int(-1*angle))
+	    self.stateInfo["trajectoryList"][i] = (int(-180+angle))
 	    i = i + 1
 
 	if (len(w) == 2):
@@ -149,7 +149,7 @@ class AutoPlan( Plan ):
 
     def updateSoftwareState( self,f,b ):
 	#ts,f,b = self.sp.lastSensor
-	if ( f <= MIN_THRESH or b <= MIN_THRESH ): 
+	if ( f <= MIN_THRESH or b <= MIN_THRESH or self.stateInfo["switch"] == True ): 
 	    self.stateInfo["state"] = 1
 	elif ( f >= OFF_LINE or b >= OFF_LINE ): 
 	    self.stateInfo["state"] = 2	
@@ -206,6 +206,7 @@ class AutoPlan( Plan ):
 		    if( abs(theta_diff) < ANGLE_THRESH ):
                         self.moveP.torque = self.stateInfo["forward"]
 			yield self.moveP
+			yield self.moveP
 		        self.updateLog(1,f,b,w)
 
 		    # if more than 15 degrees off trajectory, turn to correct
@@ -222,11 +223,11 @@ class AutoPlan( Plan ):
 			# make n an appropriate loop index
 			n = abs(n)
 			#check to see if the next turn will over-wind the robot (orient>180)
-			if ( abs(self.stateInfo["orientation"] + theta_diff) > 150 ):
-			    n = 12 - n
-			    self.stateInfo["backwards"] = True
-			    self.stateInfo["forward"] = -1*MOVE_TORQUE
-			    self.stateInfo["left"], self.stateInfo["right"] = RIGHT_TORQUE, LEFT_TORQUE	
+			#if ( abs(self.stateInfo["orientation"] + theta_diff) > 150 ):
+			#    n = 12 - n
+			#    self.stateInfo["backwards"] = True
+			#    self.stateInfo["forward"] = -1*MOVE_TORQUE
+			#    self.stateInfo["left"], self.stateInfo["right"] = RIGHT_TORQUE, LEFT_TORQUE	
                       
 			for i in range(n):
 		            self.turnP.torque = const*self.stateInfo["right"]
@@ -234,7 +235,9 @@ class AutoPlan( Plan ):
 			    yield self.turnP
 
 			self.moveP.torque = self.stateInfo["forward"]
-		 	yield self.moveP	
+		 	yield self.moveP
+			yield self.moveP
+			yield self.moveP	
 			self.updateLog(1,f,b,w)
 
                     self.stateInfo["switch"] = False	
