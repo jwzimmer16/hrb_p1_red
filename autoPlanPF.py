@@ -106,7 +106,7 @@ class AutoPlan( Plan ):
 	    num = ((v3**2) - (v2**2) - (v1**2))/(-2*v1*v2)
 	    angle = math.acos(num)
 	    angle = angle*(180/math.pi)
-	    self.stateInfo["trajectoryList"][i] = (int(-1*angle + self.stateInfo["trajectory"]))
+	    self.stateInfo["trajectoryList"][i] = (int(-1*angle))
 	    i = i + 1
 
 	if (len(w) == 2):
@@ -124,8 +124,6 @@ class AutoPlan( Plan ):
         self.stateInfo["ts"] = ts
         self.stateInfo["f"] = f
         self.stateInfo["b"] = b
-        self.stateInfo["lastf"] = f
-        self.stateInfo["lastb"] = b
 	self.stateInfo["trajectory"] = 0
 	self.stateInfo["trajectoryList"] = [0]
 
@@ -137,6 +135,7 @@ class AutoPlan( Plan ):
         self.stateInfo["estPos"] = (0,0)
         self.stateInfo["numWaypoints"] = len(w)
         self.stateInfo["switch"] = True
+	self.stateInfo["orientationChecked"] = False #once per trajectory, want to check orientation
         
     def updateTrajectory( self ):
 	#eventually use law of cosines and UPDATE trajectory list to check for moved waypoints
@@ -145,13 +144,28 @@ class AutoPlan( Plan ):
 	self.stateInfo["trajectory"] = self.stateInfo["trajectoryList"][0]
 	progress("In update trajectory, new angle is " + str(self.stateInfo["trajectory"]))
         self.stateInfo["switch"] = True
+	self.stateInfo["orientationChecked"] = False 
         
     def updateState( self, timestamp, forw, back, waypoints):
         self.stateInfo["ts"] = timestamp
-        self.stateInfo["lastf"] = forw
-        self.stateInfo["lastb"] = back
+        self.stateInfo["f"] = forw
+        self.stateInfo["b"] = back
         self.stateInfo["trajectory"] = self.stateInfo["trajectoryList"][0]
-	self.stateInfo["numWaypoints"] = len(waypoints)   
+	self.stateInfo["numWaypoints"] = len(waypoints) 
+	self.stateInfo["orientation"] = self.stateInfo["orientation"] % 360
+  
+    def updateLog( self, state, f, b, w):
+	if (state == 1):
+	    st = "Hunting Mode"
+	elif ( state == 2 ):
+	    st = "Line Following"
+	elif ( state == 3 ):
+	    st = "Correcting"
+	logging.info("In State "+str(state)+":" + str(st))
+        logging.info('Sensor Info: (f: '+str(self.stateInfo["f"])+ ' b: '+str(self.stateInfo["b"])+' w: '+str(w)+ ')')
+        logging.info('Trajectory Info: (Current Trajectory: '+str(self.stateInfo["trajectory"])+ ' Trajectory List: '+str(self.stateInfo["trajectoryList"])+ ')')
+        logging.info('Robot Info: (Orientation: '+str(self.stateInfo["orientation"])+ ')')
+        logging.info('Software Info: (switch: '+ str(self.stateInfo["switch"]) + ')')    
 
     def behavior( self ):
         """
@@ -173,14 +187,13 @@ class AutoPlan( Plan ):
 		#Off of the line, Go hunting!
 		if ( f < MIN_THRESH or b < MIN_THRESH or self.stateInfo["switch"] == True):
 		    #theta_diff = self.stateInfo["orientation"]  - self.stateInfo["trajectory"]
-		    theta_diff = self.stateInfo["trajectory"] 
+		    theta_diff = -self.stateInfo["trajectory"] 
 
 		    # if within 15 degress of trajectory, move forward
 		    if( abs(theta_diff) < ANGLE_THRESH ):
                         self.moveP.torque = self.stateInfo["forward"]
 			yield self.moveP
-                        logging.info('Off-line, moving fwd. State info (f: '+str(f)+ ' b: '+str(b)+'w: '+str(w)+ ')')
-                        logging.info('More State info (trajectory: '+str(self.stateInfo["trajectoryList"])+ ' Orientation: '+str(self.stateInfo["orientation"])+ ')')
+		        self.updateLog(1,f,b,w)
 
 		    # if more than 15 degrees off trajectory, turn to correct
 		    elif(abs(theta_diff) >= ANGLE_THRESH ):
@@ -208,8 +221,8 @@ class AutoPlan( Plan ):
 			    yield self.turnP
 			self.moveP.torque = self.stateInfo["forward"]
 		 	yield self.moveP	
-                        logging.info('Off-line, turn correcting. State info (turns: '+str(const)+'*'+str(n)+ ')')
-                        logging.info('More State info (trajectory: '+str(self.stateInfo["trajectoryList"])+ ' Orientation: '+str(self.stateInfo["orientation"])+ ')')
+			self.updateLog(1,f,b,w)
+
                     self.stateInfo["switch"] = False	
 		    progress("switch changed" + str(self.stateInfo["switch"]))
 
@@ -224,8 +237,8 @@ class AutoPlan( Plan ):
 			    yield self.moveP
 			    self.turnP.torque = self.stateInfo["left"]
 			    yield self.turnP
-                            logging.info('On-line, correcting to the left. State info (f: '+str(f)+ ' b: '+str(b)+'w: '+str(w)+ ')')
-                            logging.info('More State info (trajectory: '+str(self.stateInfo["trajectoryList"])+ ' Orientation: '+str(self.stateInfo["orientation"])+ ')')
+			    self.updateLog(2,f,b,w)
+
 		        elif ( sensor_diff > DIFF_THRESH and f < b):
                             self.moveP.torque = self.stateInfo["forward"]
 			    self.turnP.torque = self.stateInfo["left"]
@@ -233,27 +246,27 @@ class AutoPlan( Plan ):
 			    yield self.moveP
 			    self.turnP.torque = self.stateInfo["right"]
 			    yield self.turnP
-                            logging.info('On-line, correcting to the right. State info (f: '+str(f)+ ' b: '+str(b)+'w: '+str(w)+ ')')
-                            logging.info('More State info (trajectory: '+str(self.stateInfo["trajectoryList"])+ ' Orientation: '+str(self.stateInfo["orientation"])+ ')')
+			    self.updateLog(2,f,b,w)
 
                         elif ( sensor_diff < DIFF_THRESH):
 			    self.moveP.torque = self.stateInfo["forward"]
 			    yield self.moveP
+			
 
 		    elif (sensor_sum > SUM_THRESH): 
 			self.turnP.torque = self.stateInfo["left"]
 			yield self.turnP
 			self.stateInfo["orientation"] += TURN_RES
 			t_new,f_new,b_new = self.sp.lastSensor
-			logging.info('On-Line, skewed. State info (f: '+str(f)+ ' b: '+str(b)+'w: '+str(w)+ ')')
-                        logging.info('More State info (trajectory: '+str(self.stateInfo["trajectory"])+ ' Orientation: '+str(self.stateInfo["orientation"])+ ')')
+			self.updateLog(2,f,b,w)
+
 		        if( f_new + b_new > sensor_sum ):
 			    self.turnP.torque = self.stateInfo["right"] 
 			    yield self.turnP
 			    yield self.turnP   
 			    self.stateInfo["orientation"] -= 2*TURN_RES
-			    logging.info('On-line, skew overcorrection State info (f: '+str(f)+ ' b: '+str(b)+'w: '+str(w)+ ')')
-                            logging.info('More State info (trajectory: '+str(self.stateInfo["trajectory"])+ ' Orientation: '+str(self.stateInfo["orientation"])+ ')')
+			    self.updateLog(2,f,b,w)
+
 		elif ( f < OFF_LINE or b < OFF_LINE ):
 		    theta_diff = self.stateInfo["orientation"]  - self.stateInfo["trajectory"] 
 		    n = theta_diff // TURN_RES
@@ -287,8 +300,8 @@ class AutoPlan( Plan ):
 		        self.stateInfo["orientation"] += const*TURN_RES
 		        yield self.turnP
 	
-		    logging.info('On-line, not straddling. State info (turns: '+str(const)+'*'+str(n)+ ')')
-		    logging.info('More State info (trajectory: '+str(self.stateInfo["trajectoryList"])+ ' Orientation: '+str(self.stateInfo["orientation"])+ ')')
+
+		    self.updateLog(3,f,b,w)
           	             
             # pause after every action because there is sensor lag
             yield self.forDuration(self.wait)
