@@ -199,8 +199,8 @@ class AutoPlan( Plan ):
 
 		#Off of the line, Go hunting!
 		if ( self.stateInfo["state"] == 1 ):
-		    theta_diff = self.stateInfo["orientation"]  - self.stateInfo["trajectory"]
-		    #theta_diff = -self.stateInfo["trajectory"] 
+		    #theta_diff = self.stateInfo["orientation"]  - self.stateInfo["trajectory"]
+		    theta_diff = -self.stateInfo["trajectory"] 
 
 		    # if within 15 degress of trajectory, move forward
 		    if( abs(theta_diff) < ANGLE_THRESH ):
