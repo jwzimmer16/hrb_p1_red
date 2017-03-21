@@ -231,9 +231,10 @@ class AutoPlan( Plan ):
                       
 			for i in range(n):
 		            self.turnP.torque = const*self.stateInfo["right"]
-			    self.stateInfo["orientation"] += -const*TURN_RES
+			    #self.stateInfo["orientation"] += -const*TURN_RES
 			    yield self.turnP
-
+			
+			self.stateInfo["orientation"]  = self.stateInfo["trajectory"]
 			self.moveP.torque = self.stateInfo["forward"]
 		 	yield self.moveP
 			yield self.moveP
@@ -307,7 +308,7 @@ class AutoPlan( Plan ):
 			self.stateInfo["orientation"] += -const*TURN_RES
 			yield self.turnP
 			
-		    while (f + b < 450 ): 
+		    for i in range(n):
 		        self.moveP.torque = -self.stateInfo["forward"]
 		        yield self.moveP
 
