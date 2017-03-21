@@ -211,7 +211,7 @@ class AutoPlan( Plan ):
 
 		    # if more than 15 degrees off trajectory, turn to correct
 		    elif(abs(theta_diff) >= ANGLE_THRESH ):
-			n = theta_diff // TURN_RES + 1
+			n = theta_diff // TURN_RES 
 
 			# turn right
 			if( n > 0):
@@ -327,14 +327,14 @@ class AutoPlan( Plan ):
             # pause after every action because there is sensor lag
             yield self.forDuration(self.wait)
 
-	    #tss, fs, bs = self.sp.lastSensor
-            #self.updateSoftwareState(fs, bs)
+	    tss, fs, bs = self.sp.lastSensor
+            self.updateSoftwareState(fs, bs)
 
             ts_w,w = self.sp.lastWaypoints
 	    if( len(w) < self.stateInfo["numWaypoints"]):
 		self.updateTrajectory()
 
-	    self.updateSoftwareState(f,b)
+	    #self.updateSoftwareState(f,b)
 	    self.updateState(ts,f,b,w)
 	    
             yield 
