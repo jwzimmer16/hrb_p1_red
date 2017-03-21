@@ -323,8 +323,8 @@ class AutoPlan( Plan ):
             # pause after every action because there is sensor lag
             yield self.forDuration(self.wait)
 
-	    tss, fs, bs = self.sp.lastSensor
-            self.updateSoftwareState(fs, bs)
+	    #tss, fs, bs = self.sp.lastSensor
+            #self.updateSoftwareState(fs, bs)
 
             ts_w,w = self.sp.lastWaypoints
 	    if( len(w) < self.stateInfo["numWaypoints"]):
