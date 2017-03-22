@@ -239,6 +239,7 @@ class AutoPlan( Plan ):
 
 		# according to sensor data, robot is straddling the line
 		elif ( self.stateInfo["state"] == 2 ):
+		    # Robot is sufficiently orthogonal to the line, correct for distance off of the line
 		    if ( sensor_sum < SUM_THRESH ):
 		        if ( sensor_diff > DIFF_THRESH and f > b):
                             self.moveP.torque = self.stateInfo["forward"]
@@ -260,15 +261,15 @@ class AutoPlan( Plan ):
 
                         elif ( sensor_diff < DIFF_THRESH):
 			    self.moveP.torque = self.stateInfo["forward"]
-			    yield self.moveP
-			progress("sum less than SUM_THRESH")			
-
+			    yield self.moveP	
+		
+		    #skew correction, turns one way, checks sensors and corrects in opposite direction if necessary 
 		    elif (sensor_sum > SUM_THRESH): 
 			self.turnP.torque = self.stateInfo["left"]
 			yield self.turnP
 			t_new,f_new,b_new = self.sp.lastSensor
 			self.updateLog(2,f,b,w)
-			progress("sum greater than SUM_THRESH")
+			
 		        if( f_new + b_new > sensor_sum ):
 			    self.turnP.torque = self.stateInfo["right"] 
 			    yield self.turnP
