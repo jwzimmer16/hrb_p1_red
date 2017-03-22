@@ -277,7 +277,6 @@ class AutoPlan( Plan ):
 		    elif (sensor_sum > SUM_THRESH): 
 			self.turnP.torque = self.stateInfo["left"]
 			yield self.turnP
-			self.stateInfo["orientation"] += TURN_RES
 			t_new,f_new,b_new = self.sp.lastSensor
 			self.updateLog(2,f,b,w)
 			progress("sum greater than SUM_THRESH")
@@ -285,41 +284,24 @@ class AutoPlan( Plan ):
 			    self.turnP.torque = self.stateInfo["right"] 
 			    yield self.turnP
 			    yield self.turnP   
-			    self.stateInfo["orientation"] -= 2*TURN_RES
 			    self.updateLog(2,f,b,w)
 
 		elif ( self.stateInfo["state"] == 3 ):
-		    theta_diff =  - self.stateInfo["trajectory"] 
-		    n = theta_diff // TURN_RES
-
-		    # turn right
-		    if( n > 0):
-			const = 1
-		    #turn left
-		    elif ( n <= 0):
-		        const = -1
-
-		    # make n an appropriate loop index
-		    n = abs(n)
-		              
-		    for i in range(n):
-		        self.turnP.torque = const*self.stateInfo["right"]
-		        self.stateInfo["orientation"] += -const*TURN_RES
+		    if( f < b ):
+			self.turnP.torque = self.stateInfo["right"]
 		        yield self.turnP
-		    n = 6
-		    for i in range(n):
-			self.turnP.torque = const*self.stateInfo["right"]
-			self.stateInfo["orientation"] += -const*TURN_RES
 			yield self.turnP
-			
-		    for i in range(n):
-		        self.moveP.torque = -self.stateInfo["forward"]
+			yield self.turnP
+			self.moveP.torque = self.stateInfo["forward"]
 		        yield self.moveP
 
-		    for i in range(n):
-		        self.turnP.torque = const*self.stateInfo["right"]
-		        self.stateInfo["orientation"] += const*TURN_RES
+		    if( f > b ):
+			self.turnP.torque = self.stateInfo["left"]
 		        yield self.turnP
+			yield self.turnP
+			yield self.turnP
+			self.moveP.torque = self.stateInfo["forward"]
+		        yield self.moveP
 	
 
 		    self.updateLog(3,f,b,w)
