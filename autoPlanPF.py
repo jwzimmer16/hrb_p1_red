@@ -106,7 +106,7 @@ class AutoPlan( Plan ):
 	    num = ((v3**2) - (v2**2) - (v1**2))/(-2*v1*v2)
 	    angle = math.acos(num)
 	    angle = angle*(180/math.pi)
-	    self.stateInfo["trajectoryList"][i] = (int(-180+angle))
+	    self.stateInfo["trajectoryList"][i] = (int(180-angle))
 	    i = i + 1
 
 	if (len(w) == 2):
@@ -119,7 +119,6 @@ class AutoPlan( Plan ):
     def initState( self ):
         ts,f,b = self.sp.lastSensor
 	ts_w,w = self.sp.lastWaypoints
-	#eventually use law of cosines on waypoint list
 
         self.stateInfo["ts"] = ts
         self.stateInfo["f"] = f
@@ -139,8 +138,6 @@ class AutoPlan( Plan ):
 	self.stateInfo["orientationChecked"] = False #once per trajectory, want to check orientation
         
     def updateTrajectory( self ):
-	#eventually use law of cosines and UPDATE trajectory list to check for moved waypoints
-	#someLawofCosinesFcn
 	self.writeAngle()
 	self.stateInfo["trajectory"] = self.stateInfo["trajectoryList"][0]
 	progress("In update trajectory, new angle is " + str(self.stateInfo["trajectory"]))
@@ -199,7 +196,6 @@ class AutoPlan( Plan ):
 
 		#Off of the line, Go hunting!
 		if ( self.stateInfo["state"] == 1 ):
-		    #theta_diff = self.stateInfo["orientation"]  - self.stateInfo["trajectory"]
 		    theta_diff = -self.stateInfo["trajectory"] 
 
 		    # if within 15 degress of trajectory, move forward
@@ -222,16 +218,9 @@ class AutoPlan( Plan ):
 
 			# make n an appropriate loop index
 			n = abs(n)
-			#check to see if the next turn will over-wind the robot (orient>180)
-			#if ( abs(self.stateInfo["orientation"] + theta_diff) > 150 ):
-			#    n = 12 - n
-			#    self.stateInfo["backwards"] = True
-			#    self.stateInfo["forward"] = -1*MOVE_TORQUE
-			#    self.stateInfo["left"], self.stateInfo["right"] = RIGHT_TORQUE, LEFT_TORQUE	
                       
 			for i in range(n):
 		            self.turnP.torque = const*self.stateInfo["right"]
-			    #self.stateInfo["orientation"] += -const*TURN_RES
 			    yield self.turnP
 			
 			self.stateInfo["orientation"]  = self.stateInfo["trajectory"]
@@ -285,7 +274,8 @@ class AutoPlan( Plan ):
 			    yield self.turnP
 			    yield self.turnP   
 			    self.updateLog(2,f,b,w)
-
+		
+		# off of the line, correct towards the line
 		elif ( self.stateInfo["state"] == 3 ):
 		    if( f < b ):
 			self.turnP.torque = self.stateInfo["right"]
